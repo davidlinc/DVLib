@@ -9,13 +9,15 @@ using MathBase;
 using Physics;
 using System.IO;
 using System.Drawing.Imaging;
-using System.Drawing;
 using MachineLearning;
 using DVOSLib;
 
 using MathBase.Old;
 using Physics.Physics2;
 using vector2 = MathBase.Vector2;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using System.Runtime.InteropServices;
 namespace Images
 {
 	public struct Color0
@@ -58,10 +60,49 @@ namespace Images
 	}
 	}
 	public delegate int win(int x);
+	public class Converter
+	{
+		bitmap Bitmap;
+		public Converter(bitmap bitmap)
+		{
+			Bitmap = bitmap;
+		}
+		public void toBitmap(PixelAccessor<Argb32> a)
+		{
 
+			for (int i = 0; i < a.Height; i++)
+			{
+				var s = MemoryMarshal.Cast<Argb32, int>(a.GetRowSpan(i));
+				var b = Bitmap.getRowSpan(i);
+				s.CopyTo(b);
+			}
+		}
+		public void toImage(PixelAccessor<Argb32> a)
+		{
+
+			for (int i = 0; i < a.Height; i++)
+			{
+				var s = MemoryMarshal.Cast<Argb32, int>(a.GetRowSpan(i));
+			
+				var b = Bitmap.getRowSpan(i);
+				b.CopyTo(s);
+			}
+		}
+
+	}
 
 	public static class ImageHelper
 	{
+
+	
+		public static bitmap fromImage(this Image<Argb32> image)
+		{
+			bitmap bitmap=new bitmap(image.Width, image.Height);
+			Converter converter = new Converter(bitmap);
+			image.ProcessPixelRows(converter.toImage);
+			return bitmap;
+		}
+
 
 	
 		static double min = 0.000001;
@@ -2329,6 +2370,29 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			return Data;
 		}
 	
+		public bitmap(string path)
+		{
+			name = path;
+			try
+			{
+                Image<Argb32> image=Image.Load<Argb32>(path);
+				if (image != null)
+				{
+					Width= image.Width;
+					Height= image.Height;
+					HWidth = image.Width/2;
+					HHeight = image.Height/2;
+					Data=new int[Width,Height];
+					image.ProcessPixelRows(new Converter(this).toBitmap);
+					image.Dispose();
+				}
+			}
+			catch
+			{
+				
+			}
+
+		}
 		public bitmap getRect(Rectanglei r)
 		{
 			bitmap bitmap = new bitmap(r.width, r.height);
@@ -2336,6 +2400,12 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 				d[x, y] = this[x+r.X,y+r.Y];
 			});
 			return bitmap;
+		}
+		public static implicit operator Image<Argb32>(bitmap bitmap)
+		{
+			Image<Argb32> image = new Image<Argb32>(bitmap.Width, bitmap.Height);
+			image.ProcessPixelRows(new Converter(bitmap).toImage);
+			return image;
 		}
 		public bitmap[] getRandomAreas(int count,int width,int height,int minWidth=1,int minHeight=1,int maxWidth=-1,int maxHeight=-1)
 		{
@@ -3068,10 +3138,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			Data = data.Data;
 		}
 
-        public bitmap(string name)
-        {
-            this.name = name;
-        }
+    
 
         public new  bitmap Clone()
 		{
@@ -4490,7 +4557,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 				b = r;
 				a = getint(code, 0, 254, 4 * n - 3);
 			}
-			return Color.FromArgb(a, r, g, b);
+			return Color.FromRgba((byte)r, (byte)g, (byte)b, (byte)a);
 		}
 
 		public static int[] createint(string code, int min, int max, int number)

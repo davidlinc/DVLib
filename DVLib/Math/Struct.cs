@@ -9,6 +9,9 @@ using System.IO;
 using DVOSLib;
 using System.Xml;
 using MachineLearning;
+using System.Runtime.InteropServices;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace MathBase
 { 
@@ -277,7 +280,16 @@ public class Map<T>
 		}
 
 
-
+		public Span<T> getRowSpan(int row)
+		{
+			return getSpan().Slice(row*Width,Width);
+		}
+		public Span<T> getSpan()
+		{
+			var s = MemoryMarshal.CreateSpan(ref Data[0, 0], Data.Length);
+			return s;
+		}
+	
 		public void drawTriangle(T color, Vector2 a1, Vector2 a2, Vector2 a3, bool checkRange = true)
 		{
 			Map<T> map = this;
@@ -569,12 +581,7 @@ for (int i = 0; i < ll; i++)
 	//获取行和列
 	public T[] GetRow(int index)
 	{
-		T[] ret = new T[Width];
-		for (int i = 0; i < Width; i++)
-		{
-			ret[i] = this[i, index];
-		}
-		return ret;
+		return getRowSpan(index).ToArray();
 	}
 
 	public static Map<T> operator &(Map<T> map, MathFunction<T> function)
@@ -601,10 +608,9 @@ for (int i = 0; i < ll; i++)
 	}
 	public int SetRow(int index, T[] src)
 	{
-		for (int u = 0; u < Width; u++)
-		{
-			Data[u, index] = (u < src.Length) ? src[u] : default;
-		}
+			var a=getRowSpan(index);
+			Span<T> span = src;
+			span.CopyTo(a);
 		return 0;
 	}
 }
