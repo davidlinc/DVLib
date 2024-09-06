@@ -290,7 +290,156 @@ public class Map<T>
 			return s;
 		}
 	
-		public void drawTriangle(T color, Vector2 a1, Vector2 a2, Vector2 a3, bool checkRange = true)
+
+		public void drawTriangleNew(T color, Vector2 a1, Vector2 a2, Vector2 a3)
+		{
+
+			var r=from Vector2 v in new Vector2[]{ a1,a2,a3} orderby v.Y descending select v;
+
+			var top=r.ElementAt(0);
+			var mid=r.ElementAt(1);
+			var bottom=r.ElementAt(2);
+			Vector2 left, right;
+			if(top.Y==mid.Y)
+			{
+				if(top.X<mid.X)
+				{
+					left=top; right=mid;
+				}
+				else if(top.X==mid.X)
+				{
+					return;
+				}
+				else
+				{
+					left=mid;
+					right=top;
+				}
+				drawTriangleDown(color, bottom, left, right);
+			}
+			else if(mid.Y==bottom.Y)
+			{
+				if(mid.X<bottom.X)
+				{
+					left = mid;
+					right=bottom;
+				}
+				else if(mid.X==bottom.X)
+				{
+					return;
+				}
+				else
+				{
+					left = bottom;
+					right=mid;
+				}
+                drawTriangleUp(color, bottom, left, right);
+            }
+			else
+			{
+				var other=bottom+(top-bottom)/(top.Y-bottom.Y)*(mid.Y-bottom.Y);
+				if(other.X<mid.X)
+				{
+					left = other;
+					right = mid;
+				}
+				else if(other.X>mid.X)
+				{
+					right = other;
+					left = mid;
+				}
+				else
+				{
+					return;
+				}
+				drawTriangleUp(color,top, left, right);
+			    drawTriangleDown(color,bottom, left, right);
+			}
+
+		}
+        public void drawTriangleUp(T color, Vector2 up, Vector2 left, Vector2 right)
+        {
+			double height = up.Y ;
+			double hl = height - left.Y;
+			var start = left;
+			var end = right;
+			var dLeft = (  up.X-left.X) / hl ;
+			var dRight = (up.X-right.X  ) / hl;
+			int startIndex, endIndex,l;
+			if(height>=Height)
+			{
+				height = Height;
+			}
+			if(left.Y<0)
+			{
+				start = new Vector2(-left.Y * dLeft+start.X, 0);
+			}
+			for(int h=(int)(left.Y);h<height;h++)
+			{
+				var span=getRowSpan(h);
+				startIndex= (int)start.X;
+				endIndex= (int)end.X;
+			
+				if(startIndex<0)
+				{
+					startIndex = 0;
+				}
+				if(endIndex>Width)
+				{
+					endIndex = Width;
+				}	
+				l = endIndex - startIndex;
+				if(l>0)
+				{
+					span.Slice(startIndex,l).Fill(color);
+				}
+				start=start.add(dLeft, 1);
+				end=end.add(dRight, 1);
+			}
+        }
+        public void drawTriangleDown(T color, Vector2 up, Vector2 left, Vector2 right)
+        {
+            double height = up.Y;
+            double hl = left.Y-height  ;
+            var start = left;
+            var end = right;
+            var dLeft = (up.X- left.X ) / hl;
+            var dRight = ( up.X-right.X ) / hl;
+            int startIndex, endIndex, l;
+            if (height<0)
+            {
+                height =0;
+            }
+            if (left.Y >=Height)
+            {
+                start = new Vector2((left.Y-Height) * dLeft + start.X, Height);
+            }
+            for (int h = (int)(left.Y); h >= height; h--)
+            {
+                var span = getRowSpan(h);
+                startIndex = (int)start.X;
+                endIndex = (int)end.X;
+
+                if (startIndex < 0)
+                {
+                    startIndex = 0;
+                }
+                if (endIndex > Width)
+                {
+                    endIndex = Width;
+                }
+                l = endIndex - startIndex;
+                if (l > 0)
+                {
+                    span.Slice(startIndex, l).Fill(color);
+                }
+
+              start=  start.add(dLeft, -1);
+             end=   end.add(dRight, -1);
+            }
+        }
+
+        public void drawTriangle(T color, Vector2 a1, Vector2 a2, Vector2 a3, bool checkRange = true)
 		{
 			Map<T> map = this;
 			Vector2 left, mid, right;
