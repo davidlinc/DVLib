@@ -94,7 +94,152 @@ namespace Images
 	public static class ImageHelper
 	{
 
-	
+		public static byte[] readFile(string fileName)
+		{
+			if (File.Exists(fileName))
+			{
+				FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+				byte[] bytes = new byte[fs.Length];
+				fs.Read(bytes, 0, bytes.Length);
+				fs.Close();
+				return bytes;
+			}
+			return new byte[0];
+		}
+
+		public static Map<UInt16> loadSimpleRaw16(this byte[] bytes, int width, int height)
+		{
+			Map<UInt16> r = new Map<ushort>(width, height);
+			int index = bytes.Length - 2;
+			for (int i = 0; i < width; i++)
+			{
+				for (int j = 0; j < height; j++)
+				{
+					r[i, j] = (ushort)(bytes[index] | bytes[index + 1] << 8);
+					index -= 2;
+				}
+			}
+			return r;
+		}
+
+		public static double getC(Map<int> a, Map<int> b)
+		{
+			double sum = 0;
+			int a_, b_;
+			double sumB = 0;
+			double sumA = 0;
+			for (int i = 0; i < a.Width; i++)
+			{
+				for (int j = 0; j < a.Height; j++)
+				{
+					a_ = a[i, j];
+					b_ = b[i, j];
+					sum += a_ * b_;
+					sumA += a_ * a_;
+					sumB += b_ * b_;
+				}
+			}
+			return sum / Math.Sqrt(sumB * sumB);
+		}
+		public static double getC(Map<int> a, Map<int> b, MathFunction<int> math)
+		{
+			double sum = 0;
+			int a_, b_;
+			double sumB = 0;
+			double sumA = 0;
+			for (int i = 0; i < a.Width; i++)
+			{
+				for (int j = 0; j < a.Height; j++)
+				{
+					a_ = math(a[i, j]);
+					b_ = math(b[i, j]);
+					sum += a_ * b_;
+					sumA += a_ * a_;
+					sumB += b_ * b_;
+				}
+			}
+			return sum / Math.Sqrt(sumA * sumB);
+		}
+		public static double getMeanValue(Map<int> a, MathFunction<int> math)
+		{
+			double sum = 0;
+			int a_;
+			for (int i = 0; i < a.Width; i++)
+			{
+				for (int j = 0; j < a.Height; j++)
+				{
+					a_ = math(a[i, j]);
+					sum += a_;
+				}
+			}
+			return sum / a.Width / a.Height;
+		}
+		public static double getMeanValue_(Map<int> a, MathFunction<int> math, double max = 1 << 16)
+		{
+			double sum = 0;
+			int a_;
+			for (int i = 0; i < a.Width; i++)
+			{
+				for (int j = 0; j < a.Height; j++)
+				{
+					a_ = math(a[i, j]);
+					sum += a_;
+				}
+			}
+			return sum / a.Width / a.Height / max;
+		}
+		public static Map<int> loadSimpleRaw16AsInt(this byte[] bytes, int width, int height)
+		{
+			Map<int> r = new Map<int>(width, height);
+			int index = bytes.Length - 2;
+			for (int i = 0; i < width; i++)
+			{
+				for (int j = 0; j < height; j++)
+				{
+					r[i, j] = (bytes[index] | bytes[index + 1] << 8);
+					index -= 2;
+				}
+			}
+			return r;
+		}
+		public static bitmap loadSimpleRaw16AsBitmap(this byte[] bytes, int width, int height, int vmin, int vmax, int bitLength = 16)
+		{
+			int v;
+			int dv0 = (1 << (bitLength - 8));
+			bitmap bitmap = new bitmap(width, height);
+			int index = bytes.Length - 2;
+
+			int l = vmax - vmin;
+			for (int i = 0; i < width; i++)
+			{
+				for (int j = 0; j < height; j++)
+				{
+					v = (bytes[index]) | (bytes[index + 1] << 8);
+					v = (v / dv0);
+					if (v > vmax) v = 255;
+					else if (v < vmin) v = 0;
+					else v = (v - vmin) * 255 / l;
+					bitmap[i, j] = ((Colors.Alpha) | (v << 16) | (v << 8) | v);
+					index -= 2;
+				}
+			}
+			return bitmap;
+		}
+
+		static int a = 1;
+		static int b = 1 << 1;
+		static int c = 1 << 2;
+		static int d = 1 << 3;
+		static int e = 1 << 4;
+		static int f = 1 << 5;
+		static int g = 1 << 6;
+		static int h = 1 << 7;
+		static byte reverse(this byte value)
+		{
+			return (byte)((value << 7 | ((value << 5) & g) | ((value << 3) & f) | ((value << 1) & e) |
+				((value >> 1) & d) | ((value >> 3) & c) | ((value >> 5) & b) | ((value >> 7) & a)) & 255);
+		}
+
 		public static bitmap fromImage(this Image<Argb32> image)
 		{
 			bitmap bitmap=new bitmap(image.Width, image.Height);

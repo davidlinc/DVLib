@@ -13,7 +13,7 @@ using MachineLearning;
 
 namespace DVOSLib
 {
-    public static class dataHelper// 关于文件读写功能的静态类不是主要内容
+    public static class DataHelper// 关于文件读写功能的静态类不是主要内容
 
     {
         public static(int r,int g,int b)Int2RGB(this int color)

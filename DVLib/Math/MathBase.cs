@@ -276,6 +276,39 @@ Data[i, j] = (colors[i, j]) & 0xff;
 
 		}
 
+		public ComplexMap getSized(int x, int y, int xOffset, int yOffset)
+		{
+			ComplexMap bitmap = new ComplexMap(x, y);
+
+			double rateX = Width * 1.0 / x;
+			double rateY = Height * 1.0 / y;
+			int px, py, n, xx, yy;
+			Complex v;
+			bitmap.Foreach((x_, y_, d) =>
+			{
+				n = 0;
+				v = 0;
+				px = (int)(rateX * x_) + xOffset;
+				py = (int)(rateY * y_) + yOffset;
+				for (int i = 0; i < rateX; i++)
+				{
+					for (int j = 0; j < rateY; j++)
+					{
+						xx = px + i;
+						yy = py + j;
+						if (xx < Width && yy < Height)
+						{
+							v += this[xx, yy];
+							n++;
+						}
+					}
+				}
+				v /= n;
+				bitmap[x_, y_] = v;
+			});
+			return bitmap;
+		}
+
 		public Vector2 getMassPointR()
 		{
 			Vector2 v = new vector2(0, 0);

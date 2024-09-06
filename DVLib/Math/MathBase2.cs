@@ -880,7 +880,12 @@ namespace MathBase
         {
             return new Vector2(b.X / a, b.Y / a);
         }
-        public static Vector2 operator *(Vector2 b, int a)
+		public Vector2 scale(double x, double y)
+		{
+			return new Vector2(this.X * x, this.Y *
+				y);
+		}
+		public static Vector2 operator *(Vector2 b, int a)
         {
             return new Vector2(a * b.X, a * b.Y);
         }
