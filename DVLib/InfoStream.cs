@@ -8,6 +8,8 @@ using Images;
 using IntMap = Images.bitmap;
 using DVOSLib;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DVOSLib
 {
@@ -44,10 +46,11 @@ namespace DVOSLib
 
 		internal	byte[] bytes = new byte[1];
 		int pointer = 1;
-	internal	List<FileStream> files=new List<FileStream>();
-
-	static	Dictionary<InfoType, ReadFunction> readFMap = new Dictionary<InfoType, ReadFunction>();
-	static	Dictionary<Type, WriteFunction> writeFMap = new Dictionary<Type, WriteFunction>();
+		int Capcity=1;
+		int Length = 1;
+	    internal	List<FileStream> files=new List<FileStream>();
+	    static	Dictionary<InfoType, ReadFunction> readFMap = new Dictionary<InfoType, ReadFunction>();
+	    static	Dictionary<Type, WriteFunction> writeFMap = new Dictionary<Type, WriteFunction>();
 
 		public static void register(InfoType type,WriteFunction wf,ReadFunction rf,params Type[] types)
 		{
@@ -58,6 +61,13 @@ namespace DVOSLib
 			}
 		}
 	
+		void grow()
+		{
+			Capcity *= 2;
+			byte[] bytes = new byte[Capcity];
+			Array.Copy(this.bytes, bytes, Length);
+			this.bytes = bytes;
+		}
 		public InfoStream write(params object[] o)
 		{
 			foreach (object s in o)
@@ -141,9 +151,14 @@ namespace DVOSLib
 			}
 			return this;
 		}
-		public InfoStream()
+		public InfoStream(int cpacity=1024)
 		{
+			
+			this.Capcity = cpacity;
+			bytes = new byte[Capcity];
 			setInfoType(InfoType.OBJECTS);
+			Length = 1;
+		
 			
 		}
 
@@ -174,11 +189,11 @@ namespace DVOSLib
 			if (bytes[0] == (byte)InfoType.HEAD) 
 			{
 				byte[] nb = new
-					byte[bytes.Length - 5];
-				for(int i=0;i<nb.Length;i++)
-				{
-					nb[i] = bytes[i + 5];
-				}
+				byte[bytes.Length - 5];
+				Span<byte> bs = bytes;
+				bs = bs.Slice(5, bytes.Length - 5);
+				Span<byte> nbs = nb;
+				bs.CopyTo(nbs);
 			}
 		}
 		public InfoStream(byte[] bs)
@@ -186,20 +201,21 @@ namespace DVOSLib
 			bytes= bs;
 			pointer = 5;
 		}
-	 byte[] get()
+
+		Span<byte> getSpan()
 		{
-			byte[] vs = new byte[bytes.Length + 1];
-			bytes.CopyTo(vs, 0);
-			vs[vs.Length - 1] = (byte)InfoType.END;
-			return vs;
+			return ((Span<byte>)bytes).Slice(0, Length);
 		}
+
 		public void setInfoType(InfoType type)
 		{
 			bytes[0] = (byte)type;
 		}
+
+
 		public static byte[] appendArray(params byte[][] bytes)
 		{
-			long sum = 0, sum2 = 0 ;
+			long sum = 0, sum2 = 0;
 			foreach (byte[] bs in bytes)
 			{
 				sum += bytes.LongLength;
@@ -212,12 +228,27 @@ namespace DVOSLib
 			}
 			return r;
 		}
-		public void append(byte[] bs)
+
+		public void appendValues(params byte[] bytes)
 		{
-			byte[] newlist = new byte[bytes.Length + bs.Length];
-			bytes.CopyTo(newlist, 0);
-			bs.CopyTo(newlist, bytes.Length);
-			bytes = newlist;
+			append(bytes);
+		}
+
+		public void append<T>(T value)where T: struct
+		{
+			append(getSpan(value));
+		}
+
+			public void append(Span<byte> bytes)
+		{
+			int nl = Length + bytes.Length;
+			while(Capcity<nl)
+			{
+				grow();
+			}
+			Span<byte> raw = ((Span<byte>)this.bytes).Slice(Length,bytes.Length);
+			bytes.CopyTo(raw);
+			Length += bytes.Length;
 		}
 		InfoType getInfoType<T>(Map<T> map)
 		{
@@ -247,91 +278,35 @@ namespace DVOSLib
 			}
 			return InfoType.NULL;　
 		}
-		byte[] getByteArray<T>(T[] map)
+		Span<byte> getByteArray<T> (T[] map)where T:struct
 		{
-			byte[] r=new byte[0];
-			int n = 0;
-			int l;
-			if (map is int[])
-			{
-				l = 4;
-				r = new byte[map.Length * l];
-				foreach(T i in map)
-				{
-					Array.Copy(BitConverter.GetBytes((int)(object)i), 0, r, n, l);
-					n += l;
-				}
-			}
-			else if (map is long[])
-			{
-				l = 8;
-				r = new byte[map.Length * l];
-				foreach (T i in map)
-				{
-					Array.Copy(BitConverter.GetBytes((long)(object)i), 0, r, n, l);
-					n += l;
-				}
-			}
-			else if (map is bool[])
-			{
-				l = 1;
-				r = new byte[map.Length * l];
-				foreach (T i in map)
-				{
-					Array.Copy(BitConverter.GetBytes((bool)(object)i), 0, r, n, l);
-					n += l;
-				}
-			}
-			else if (map is double[])
-			{
-				l = 8;
-				r = new byte[map.Length * l];
-				foreach (T i in map)
-				{
-					Array.Copy(BitConverter.GetBytes((double)(object)i), 0, r, n, l);
-					n += l;
-				}
-			}
-			else if (map is byte[])
-			{
-				r = (byte[])(object)map;
-			}
-			else if (map is float[])
-			{
-				l = 4;
-				r = new byte[map.Length * l];
-				foreach (T i in map)
-				{
-					Array.Copy(BitConverter.GetBytes((float)(object)i), 0, r, n, l);
-					n += l;
-				}
-			}
-			return r;
+			Span<T> span = map;
+			return MemoryMarshal.Cast<T, byte>(span);
 		}
-		public void writeMap<T >(Map<T> map)
+
+		Span<byte> getSpan<T>(T value)where T:struct
 		{
-			
-			byte[] newb = new byte[2];
-			newb[0] = (byte)InfoType.MAP;
-			newb[1] = (byte)getInfoType(map);
-			byte[] width = BitConverter.GetBytes(map.Width);
-			byte[] height = BitConverter.GetBytes(map.Height);
-			newb = appendArray(newb, width, height,getByteArray(map.getArray()));
-			append(newb);
+			unsafe
+			{
+                T* p= &value;
+				Span<T> st = new Span<T>(p, 1);
+				return MemoryMarshal.Cast<T,byte>(st);
+			}
+		}
+		public void writeMap<T >(Map<T> map)where T:struct
+		{
+			appendValues((byte)InfoType.MAP, (byte)getInfoType(map));
+			append(map.Width);
+			append(map.Height);
+			append(MemoryMarshal.Cast<T, byte>(map.getSpan()));
     		}
 		public void writeNull()
 		{
-			byte[] meg2 = new byte[1];
-			meg2[0] = (byte)InfoType.NULL;
-			append(meg2);
+			appendValues((byte)InfoType.NULL);
 		}
 		public void writeByte(byte i)
 		{
-			byte[] meg2 = new byte[2];
-			meg2[0] = (byte)InfoType.BYTE;
-			meg2[1] = i;
-
-			append(meg2);
+			appendValues((byte)InfoType.BYTE,i);
 		}
 		public byte readByte()
 		{
@@ -343,10 +318,10 @@ namespace DVOSLib
 
 		public byte[] getTosend()
 		{
-			byte[] b = get();
-			byte[] bs = new byte[5 + b.Length];
+			var b = getSpan();
+			byte[] bs = new byte[5 + Length];
 			
-			b.CopyTo(bs, 5);
+			b.CopyTo(((Span<byte>)bs).Slice(5));
 			bs[0] = (byte)InfoType.HEAD;
 			int i = bs.Length;
 			bs[1] = (byte)(i >> 24);
@@ -357,10 +332,8 @@ namespace DVOSLib
 		}
 		public void writeLong(long i)
 		{
-			byte[] meg2 = new byte[9];
-			meg2[0] = (byte)InfoType.LONG;
-			BitConverter.GetBytes(i).CopyTo(meg2, 1);
-			append(meg2);
+			append((byte)InfoType.LONG);
+			append(i);
 		}
 
 		public long readLong()
@@ -371,10 +344,8 @@ namespace DVOSLib
 		}
 		public void writeFileStream(FileStream file,string path)
 		{
-			InfoStream i = new InfoStream();
-			i.setInfoType(InfoType.FILESTREAM);
-			i.writeString(path);
-			append(i.bytes);
+			append(InfoType.FILESTREAM);
+			writeString(path);
 			files.Add(file);
 		}
 		public FileStream readFileStream()
@@ -392,14 +363,8 @@ namespace DVOSLib
 		}
 		public void writeInt(int i)
 		{
-			byte[] meg2 = new byte[5];
-			meg2[0] = (byte)InfoType.INT;
-			meg2[1] = (byte)(i >> 24);
-			meg2[2] = (byte)(i >> 16);
-			meg2[3] = (byte)(i >> 8);
-			meg2[4] = (byte)(i);
-
-			append(meg2);
+		    append(InfoType.INT);
+			append(i);
 		}
 	public object readNull()
 		{
@@ -408,40 +373,29 @@ namespace DVOSLib
 		}
 		public int readInt()
 		{
-			int p = pointer;
-			pointer += 5;
-
-			return (bytes[p+1]<<24) | (bytes[p + 2] << 16) | (bytes[p + 3] << 8) | (bytes[p + 4]);
+			pointer++;
+			var v = BitConverter.ToInt32(bytes, pointer);
+			pointer += 4;
+			return  v;
 		}
 		public double readDouble()
 		{
-			byte[] b = new byte[8];
-			for(int i=0;i<8;i++ )
-			{
-				pointer++;
-				b[i] = bytes[pointer];
-			}
 			pointer++;
-			return BitConverter.ToDouble(b, 0);
+			var v = BitConverter.ToDouble(bytes, pointer);
+			pointer += 8;
+			return v ;
 		}
 		public float readFloat()
 		{
-			byte[] b = new byte[4];
-			for (int i = 0; i < 4; i++)
-			{
-				pointer++;
-				b[i] = bytes[pointer];
-			}
 			pointer++;
-			return BitConverter.ToSingle(b, 0);
+			var v = BitConverter.ToSingle(bytes, pointer);
+			pointer += 4;
+			return pointer;
 		}
 		public void writeFloat(float i)
-		{
-			byte[] meg1 = BitConverter.GetBytes(i);
-			byte[] meg2 = new byte[meg1.Length + 1];
-			meg2[0] = (byte)InfoType.FLOAT;
-			meg1.CopyTo(meg2, 1);
-			append(meg2);
+		{ 
+			append(InfoType.FLOAT);
+			append(i);
 		}
 		public string readString()
 		{
@@ -456,12 +410,9 @@ namespace DVOSLib
 		}
 		public void writeDouble(double i)
 		{
-			byte[] meg1 = BitConverter.GetBytes(i);
-			byte[] meg2 = new byte[meg1.Length + 1];
-			meg2[0] =(byte) InfoType.DOUBLE;
-			meg1.CopyTo(meg2, 1);
 
-			append(meg2);
+			append(InfoType.DOUBLE);
+			append(i);
 		}
 		public InfoType type()
 		{
@@ -479,7 +430,8 @@ namespace DVOSLib
 
 			foreach (InfoStream s in infos)
 			{
-				append(s.get());
+				append(s.getSpan());
+				appendValues((byte)InfoType.END);
 				foreach(FileStream f in s.files)
 				{
 					files.Add
@@ -717,8 +669,9 @@ namespace DVOSLib
 		}
 		public void writeVector2(Vector2 v)
 		{
-			append(appendArray(new byte[] { (byte)InfoType.VECTOR2}, BitConverter.GetBytes(v.X), BitConverter.GetBytes(v.Y)))
-			;
+			append(InfoType.VECTOR2);
+			append(v.X);
+			append(v.Y);	
 		}
 		public Vector2 readVector2()
 		{
@@ -729,8 +682,10 @@ namespace DVOSLib
 		}
 		public void writeVector3(Vector3 v)
 		{
-			append(appendArray(new byte[] {(byte) InfoType.VECTOR3 },BitConverter.GetBytes(v.x), BitConverter.GetBytes(v.y), BitConverter.GetBytes(v.z)))
-			;
+			append(InfoType.VECTOR3);
+			append(v.x);
+			append(v.y);
+			append(v.z);
 		}
 		public InfoType currentType()
 		{
@@ -761,11 +716,8 @@ namespace DVOSLib
 		}
 		public void writeBool(bool b)
 		{
-			byte[] bs = new byte[2];
-			bs[0] = (byte)InfoType.BOOL;
-			bs[1] = b ? (byte)1 : (byte)0;
-			append(bs);
-
+			append(InfoType.BOOL);
+			append(b ? (byte)1 : (byte)0);
 		}
 		public static byte[] intToBytes(int i)
 		{
@@ -778,10 +730,10 @@ namespace DVOSLib
 		}
 		public void write1_4(List<List<IntMap>> data)
 		{
-			append(intToBytes(data.Count));
+			append(data.Count);
 			foreach (List<IntMap> bitmaps in data)
 			{
-				append(intToBytes(bitmaps.Count));
+				append(bitmaps.Count);
 				foreach (IntMap bitmap in bitmaps)
 				{
 					write(bitmap);
@@ -852,41 +804,19 @@ namespace DVOSLib
 		}
 		public void writeIntArray(int[] ints)
 		{
-			int l = ints.Length;
-			byte[] bs = new byte[l * 4 + 5];
-			bs[0] = (byte)InfoType.INTARRAY;
-			bs[1] = (byte)((l >> 24) & 0xff);
-			bs[2] = (byte)((l >> 16) & 0xff);
-			bs[3] = (byte)((l >>8) & 0xff);
-			bs[4] = (byte)((l) & 0xff);
-
-			for(int i=0;i<l;i++)
-			{
-				int ii = ints[i];
-				int iii = 4 * i;
-				bs[iii + 5] = (byte)((ii >> 24) & 0xff);
-				bs[iii + 6] = (byte)((ii >> 16) & 0xff);
-				bs[iii + 7] = (byte)((ii >> 8) & 0xff);
-				bs[iii + 8] = (byte)((ii) & 0xff);
-			}
-			append(bs);
+			append(InfoType.INTARRAY);
+			append(ints.Length);
+			append(MemoryMarshal.Cast<int,byte>( ints) );
 
 		}
 		public void writeStringArray(string[] ints)
 		{
-			int l = ints.Length;
-			byte[] bs = new byte[ 5];
-			bs[0] = (byte)InfoType.STRINGARRAY;
-			bs[1] = (byte)((l >> 24) & 0xff);
-			bs[2] = (byte)((l >> 16) & 0xff);
-			bs[3] = (byte)((l >> 8) & 0xff);
-			bs[4] = (byte)((l) & 0xff);
-			append(bs);
+			append(InfoType.STRINGARRAY);
+			append(ints.Length);
 		foreach(string s in ints)
 			{
 				writeString(s);
 			}
-
 		}
 		public string[] readStringArray()
 		{
@@ -913,16 +843,9 @@ namespace DVOSLib
 		public void writeString(string s)
 		{
 			byte[] msg = Encoding.UTF8.GetBytes(s);
-			byte[] meg2 = new byte[msg.Length + 5];
-			msg.CopyTo(meg2, 5);
-			int l = msg.Length;
-			meg2[0] = (byte)InfoType.STRING;
-			meg2[1] = (byte)(l >> 24);
-			meg2[2] = (byte)(l >> 16);
-			meg2[3] = (byte)(l >> 8);
-			meg2[4] = (byte)(l);
-
-			append(meg2);
+			append(InfoType.STRING);
+			append(msg.Length);
+			append(msg);
 		}
 	}
 }
