@@ -1531,12 +1531,21 @@ Data[i, j] = (colors[i, j]) & 0xff;
 		static public bool isnumber(this char a)
 		{
 			char b = '0';
-			for (int i = 0; i < 10; i++)
-			{
-				if (a == b + i)
+			
+				if (a-b<10)
 					return true;
-			}
+			
 			if (a == '.')
+				return true;
+			return false;
+		}
+		static public bool isLetter(this char a)
+		{
+			char b = 'a';
+			char c = 'A';
+			if (a - b < 26&&a>b)
+				return true;
+			if (a - c < 26&&a>c)
 				return true;
 			return false;
 		}
