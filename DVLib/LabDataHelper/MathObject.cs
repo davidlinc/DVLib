@@ -470,13 +470,14 @@ namespace DVLib.LabDataHelper
 							{
 								notFound = false;
 								left[i+1].Add(v);
-								v.position -= pos[i] +1;
+								v.position -= pos[i] +1+tt;
 								break;
 							}
 						}
 						if(notFound)
 						{
 							left[0].Add(v);
+							v.position -= tt;
 						}
 					}
 					MathObject[]mathObjects=new MathObject[funcSize];
@@ -631,10 +632,36 @@ namespace DVLib.LabDataHelper
 		{
 			return data => OperatorInfo(data[0], data[1]);
 		}
-		public static List<int> findString(this string text, string toFind)
+		public static int findFirstChar(this ReadOnlySpan<char> text, char c)
+		{ 
+		 for(int i = 0;i<text.Length;i++)
+			{
+				if (text[i] == c)
+				{
+					return i;
+				}
+			}
+		 return -1;
+		}
+		public static List<int> findChar(this ReadOnlySpan<char> text, char c)
+		{
+			List<int> result = new List<int>();
+			for (int i = 0; i < text.Length; i++)
+			{
+				if (text[i] == c)
+				{
+					result.Add(i);
+				}
+			}
+			return result;
+		}
+		public static List<int> findString(this string text_, string toFind)
+		{
+			return findString(text_.AsSpan(), toFind);
+		}
+			public static List<int> findString(this ReadOnlySpan<char> text_, string toFind)
 		{
 			List<int> ints = new List<int>();
-			ReadOnlySpan<char> text_ = text.AsSpan();
 			ReadOnlySpan<char> mark = toFind.AsSpan();
 			int l = toFind.Length;
 			int times = text_.Length - toFind.Length + 1;
@@ -646,6 +673,24 @@ namespace DVLib.LabDataHelper
 				}
 			}
 			return ints;
+		}
+		public static int findFirstString(this string text_, string toFind)
+		{ 
+		return findFirstString(text_.AsSpan(), toFind);
+		}
+			public static int findFirstString(this ReadOnlySpan<char> text_, string toFind)
+		{
+			ReadOnlySpan<char> mark = toFind.AsSpan();
+			int l = toFind.Length;
+			int times = text_.Length - toFind.Length + 1;
+			for (int i = 0; i < times; i++)
+			{
+				if (text_[i] == toFind[0] && mark.SequenceEqual(text_.Slice(i, l)))
+				{
+					return i;
+				}
+			}
+			return -1 ;
 		}
 	}
 
