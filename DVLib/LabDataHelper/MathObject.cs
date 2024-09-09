@@ -31,11 +31,12 @@ namespace DVLib.LabDataHelper
 
 	public class MathObjectManager
 	{
+		static int max = 6;
 		static int maxPriority = 0;
 		static Random random = new Random();
 		internal static MathObject error = new NumberObject(double.NaN);
 		static Dictionary<char,HeadCharSet> stringLic = new Dictionary<char, HeadCharSet>();
-
+		bool canOver = true;
 
 		public MathObjectManager()
 		{
@@ -44,54 +45,54 @@ namespace DVLib.LabDataHelper
 
 		void registerDefault()
 		{
-			register(new OperatorInfo("+", OperatorType.LeftRight, 0, Helper.toSourceOperator((a, b) => { return a + b; })));
-			register(";", OperatorType.LeftRight, 0, Helper.toSourceOperator((a, b) => { return 0; }));
-			register(new OperatorInfo("=", OperatorType.LeftRight, 0, Helper.toSourceOperator((a, b) => { return 0; }),EQ	
+			register(new OperatorInfo("+", OperatorType.LeftRight, max-4, Helper.toSourceOperator((a, b) => { return a + b; })));
+			register(";", OperatorType.LeftRight, 0, Helper.toSourceOperator((a, b) => { return 0; }),OperatorInfo.RuntimeLR);
+			register(new OperatorInfo("=", OperatorType.LeftRight, 1, Helper.toSourceOperator((a, b) => { return 0; }),EQ	
 				).setReverse());
-			register(new OperatorInfo("-", OperatorType.LeftRightOrRight, 1,
+			register(new OperatorInfo("-", OperatorType.LeftRightOrRight, max-3,
 				(double[] data) => { if (data.Length == 1) return -data[0]; return data[0] - data[1]; }
 				));
-			register(new OperatorInfo("/", OperatorType.LeftRight, 2, (a, b) => { return a / b; }));
-			register(new OperatorInfo("*", OperatorType.LeftRight, 2, (a, b) => { return a * b; }));
-			register(new OperatorInfo("%", OperatorType.LeftRight, 2, (a, b) => { return a % b; }));
-			register(new OperatorInfo("^", OperatorType.LeftRight, 3, Math.Pow));
-			register(new OperatorInfo("/-", OperatorType.LeftRight, 2, (a, b) => { return a / -b; }));
-			register(new OperatorInfo("*-", OperatorType.LeftRight, 2, (a, b) => { return a * -b; }));
-			register(new OperatorInfo("%-", OperatorType.LeftRight, 2, (a, b) => { return a % -b; }));
-			register(new OperatorInfo("^-", OperatorType.LeftRight, 3, (a, b) => Math.Pow(a, -b)));
-			register(new OperatorInfo("sin", OperatorType.Func, 4, Math.Sin));
-			register(new OperatorInfo("cos", OperatorType.Func, 4, Math.Cos));
-			register(new OperatorInfo("tan", OperatorType.Func, 4, Math.Tan));
-			register(new OperatorInfo("arcsin", OperatorType.Func, 4, Math.Asin));
-			register(new OperatorInfo("arccos", OperatorType.Func, 4, Math.Acos));
-			register(new OperatorInfo("arctan", OperatorType.Func, 4, Math.Atan));
-			register(new OperatorInfo("arccosh", OperatorType.Func, 4, Math.Acosh));
-			register(new OperatorInfo("arcsinh", OperatorType.Func, 4, Math.Asinh));
-			register(new OperatorInfo("arctanh", OperatorType.Func, 4, Math.Atanh));
-			register(new OperatorInfo("arctan2", OperatorType.Func, 4, Math.Atan2));
-			register(new OperatorInfo("asin", OperatorType.Func, 4, Math.Asin));
-			register(new OperatorInfo("acos", OperatorType.Func, 4, Math.Acos));
-			register(new OperatorInfo("atan", OperatorType.Func, 4, Math.Atan));
-			register(new OperatorInfo("abs", OperatorType.Func, 4, Math.Abs));
-			register(new OperatorInfo("acosh", OperatorType.Func, 4, Math.Acosh));
-			register(new OperatorInfo("asinh", OperatorType.Func, 4, Math.Asinh));
-			register(new OperatorInfo("atanh", OperatorType.Func, 4, Math.Atanh));
-			register(new OperatorInfo("atan2", OperatorType.Func, 4, Math.Atan2));
-			register(new OperatorInfo("sinh", OperatorType.Func, 4, Math.Sinh));
-			register(new OperatorInfo("cosh", OperatorType.Func, 4, Math.Cosh));
-			register(new OperatorInfo("tanh", OperatorType.Func, 4, Math.Tanh));
-			register(new OperatorInfo("exp", OperatorType.Func, 4, Math.Exp));
-			register(new OperatorInfo("round", OperatorType.Func, 4, Math.Round));
-			register(new OperatorInfo("max", OperatorType.Func, 4, Math.Max));
-			register(new OperatorInfo("min", OperatorType.Func, 4, Math.Min));
-			register(new OperatorInfo("random", OperatorType.Source, 4, (double[] data) => random.NextDouble()));
-			register(new OperatorInfo("randInt", OperatorType.Func, 4, (a, b) => random.Next((int)Math.Min(a, b), (int)Math.Max(a, b))));
-			register(new OperatorInfo("pi", OperatorType.Source, 4, (double[] data) => Math.PI));
-			register(new OperatorInfo("rad", OperatorType.Func, 4, (a) => { return a * Math.PI / 180; }));
-			register(new OperatorInfo("degree", OperatorType.Func, 4, (a) => { return a * 180 / Math.PI; }));
-			register(new OperatorInfo("x", OperatorType.Source, 4, data => data[0]));
-			register(new OperatorInfo("y", OperatorType.Source, 4, data => data[1]));
-			register(new OperatorInfo("z", OperatorType.Source, 4, data => data[2]));
+			register(new OperatorInfo("/", OperatorType.LeftRight, max-2, (a, b) => { return a / b; }));
+			register(new OperatorInfo("*", OperatorType.LeftRight, max-2, (a, b) => { return a * b; }));
+			register(new OperatorInfo("%", OperatorType.LeftRight, max-2, (a, b) => { return a % b; }));
+			register(new OperatorInfo("^", OperatorType.LeftRight, max-1, Math.Pow));
+			register(new OperatorInfo("/-", OperatorType.LeftRight, max-2, (a, b) => { return a / -b; }));
+			register(new OperatorInfo("*-", OperatorType.LeftRight, max-2, (a, b) => { return a * -b; }));
+			register(new OperatorInfo("%-", OperatorType.LeftRight, max-2, (a, b) => { return a % -b; }));
+			register(new OperatorInfo("^-", OperatorType.LeftRight, max-1, (a, b) => Math.Pow(a, -b)));
+			register(new OperatorInfo("sin", OperatorType.Func, max, Math.Sin));
+			register(new OperatorInfo("cos", OperatorType.Func, max, Math.Cos));
+			register(new OperatorInfo("tan", OperatorType.Func, max, Math.Tan));
+			register(new OperatorInfo("arcsin", OperatorType.Func, max, Math.Asin));
+			register(new OperatorInfo("arccos", OperatorType.Func, max, Math.Acos));
+			register(new OperatorInfo("arctan", OperatorType.Func, max, Math.Atan));
+			register(new OperatorInfo("arccosh", OperatorType.Func, max, Math.Acosh));
+			register(new OperatorInfo("arcsinh", OperatorType.Func, max, Math.Asinh));
+			register(new OperatorInfo("arctanh", OperatorType.Func, max, Math.Atanh));
+			register(new OperatorInfo("arctan2", OperatorType.Func, max, Math.Atan2));
+			register(new OperatorInfo("asin", OperatorType.Func, max, Math.Asin));
+			register(new OperatorInfo("acos", OperatorType.Func, max, Math.Acos));
+			register(new OperatorInfo("atan", OperatorType.Func, max, Math.Atan));
+			register(new OperatorInfo("abs", OperatorType.Func, max, Math.Abs));
+			register(new OperatorInfo("acosh", OperatorType.Func, max, Math.Acosh));
+			register(new OperatorInfo("asinh", OperatorType.Func, max, Math.Asinh));
+			register(new OperatorInfo("atanh", OperatorType.Func, max, Math.Atanh));
+			register(new OperatorInfo("atan2", OperatorType.Func, max, Math.Atan2));
+			register(new OperatorInfo("sinh", OperatorType.Func, max, Math.Sinh));
+			register(new OperatorInfo("cosh", OperatorType.Func, max, Math.Cosh));
+			register(new OperatorInfo("tanh", OperatorType.Func, max, Math.Tanh));
+			register(new OperatorInfo("exp", OperatorType.Func, max, Math.Exp));
+			register(new OperatorInfo("round", OperatorType.Func, max, Math.Round));
+			register(new OperatorInfo("max", OperatorType.Func, max, Math.Max));
+			register(new OperatorInfo("min", OperatorType.Func, max, Math.Min));
+			register(new OperatorInfo("random", OperatorType.Source, max, (double[] data) => random.NextDouble()));
+			register(new OperatorInfo("randInt", OperatorType.Func, max, (a, b) => random.Next((int)Math.Min(a, b), (int)Math.Max(a, b))));
+			register(new OperatorInfo("pi", OperatorType.Source, max, (double[] data) => Math.PI));
+			register(new OperatorInfo("rad", OperatorType.Func, max, (a) => { return a * Math.PI / 180; }));
+			register(new OperatorInfo("degree", OperatorType.Func, max, (a) => { return a * 180 / Math.PI; }));
+			register(new OperatorInfo("x", OperatorType.Source, max, data => data[0]));
+			register(new OperatorInfo("y", OperatorType.Source, max, data => data[1]));
+			register(new OperatorInfo("z", OperatorType.Source,max, data => data[2]));
 		}
 		
 		OperatorInfo register(string mark, OperatorType type, int priority, SourceOperator so,ObjectFactory factory=null , string tag = "raw")
@@ -256,6 +257,8 @@ namespace DVLib.LabDataHelper
 		static MathObject EQ(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
 			var v=OperatorInfo.solveLR(text, ois, infos, manager);
+
+			
 			if (v[0].name.isFuncName())
             {
 		
@@ -306,7 +309,7 @@ namespace DVLib.LabDataHelper
 							}
 						}
 						MathObject m = manager.GetMathObject(v[1].name, v[1].infos);
-						manager.AddUserFunc(names[0], m, "runtime");
+						manager.registerFunc(names[0], m, "runtime");
 					    manager.removeWithTag("temp");
 						foreach (OperatorInfo o in old)
 						{
@@ -329,7 +332,7 @@ namespace DVLib.LabDataHelper
 				{
 					MathObject m = manager.GetMathObject(v[1].name, v[1].infos);
 					r = m.getValue();
-				manager.registerSource(funcname.ToString(), r,"runtime");
+					manager.registerSource(v[0].name, r,"runtime");
 				}
 				return new SourceObject((a) => r);
 			}
@@ -394,8 +397,8 @@ namespace DVLib.LabDataHelper
 							old.Add(olds);
 						}
 					}
-					MathObject m = Scan(func.ToString());
-					AddUserFunc(names[0],m , tag);
+					MathObject m = Run(func.ToString());
+					registerFunc(names[0],m , tag);
 					removeWithTag("temp");
 					foreach(OperatorInfo o in old)
 					{
@@ -427,7 +430,7 @@ namespace DVLib.LabDataHelper
 			}
 			if(funcname!=null&&func!=null)
 			{
-					MathObject m = Scan(func.ToString());
+					MathObject m = Run(func.ToString());
 				r = m.getValue();
 					registerSource(funcname.ToString(),r, tag);
 			}
@@ -438,24 +441,24 @@ namespace DVLib.LabDataHelper
 		OperatorInfo registerSource(string name,int index,string tag="temp")
 		{
 
-			return register(name, OperatorType.Source, 4, (double [] data) => {
+			return register(name, OperatorType.Source,max, (double [] data) => {
 				return data[index];
 			}, null,tag);
 		}
 		OperatorInfo registerSource(string name,double value, string tag = "temp")
 		{
 
-			return register(name, OperatorType.Source, 4, (double[] data) => {
+			return register(name, OperatorType.Source, max, (double[] data) => {
 				return value;
 			}, null,tag);
 		}
-		public void AddUserFunc(string name,MathObject mathObject,string tag="customize")
+		public void registerFunc(string name,MathObject mathObject,string tag="customize")
 		{
-			if(match(name)==null)
-			register(new OperatorInfo(name, OperatorType.Func, 4,(double[] data)=> ( mathObject.getValue(data) ),null, tag));
+			if(match(name)==null||canOver)
+			register(new OperatorInfo(name, OperatorType.Func, max,(double[] data)=> ( mathObject.getValue(data) ),null, tag));
 		}
 
-		public MathObject Scan(string text)
+		public MathObject Run(string text)
 		{
 		Helper.	clean(ref text);
 			List<OperatorScanInfo> info = new List<OperatorScanInfo>();
@@ -466,7 +469,7 @@ namespace DVLib.LabDataHelper
 		public MathObject GetMathObject(string text,List<OperatorScanInfo> infos) 
 		{
 			int t = Helper.clean(ref text);
-
+			
 
 
 
@@ -481,8 +484,8 @@ namespace DVLib.LabDataHelper
 
 			foreach(var v in infos)
 			{
-				v.level -= t;
 				v.position -= t;
+				v.level -= t;
 				if(v.level==0)
 				{
 					plist[v.operatorInfo.priority].Add(v);
@@ -494,7 +497,7 @@ namespace DVLib.LabDataHelper
 			{
 				if(v.Count>0)
 				{
-					int maxPos = -1;
+					int maxPos = int.MinValue;
 					
 					foreach(var i in v)
 					{
@@ -510,7 +513,9 @@ namespace DVLib.LabDataHelper
 
 			if(ois!=null)
 			{
-			return	ois.operatorInfo.factory(text, ois, infos,this);
+				
+				var v = ois.operatorInfo.factory(text, ois, infos, this);
+				return	v;
 			}
 			else
 			{
@@ -728,6 +733,10 @@ namespace DVLib.LabDataHelper
 
 		internal bool reverse = false;
 		
+		public OperatorInfo(OperatorInfo other)
+		{
+			copyForm(other);
+		}
 		public OperatorInfo(string mark, OperatorType type,int priority,SourceOperator so,ObjectFactory factory=null,string tag="raw")
 	
 		{
@@ -758,6 +767,19 @@ namespace DVLib.LabDataHelper
 			return this;
 		}
 
+		public OperatorInfo copyForm(OperatorInfo operatorInfo)
+		{
+			this.mark = operatorInfo.mark;
+			this.type = operatorInfo.type;
+			this.priority = operatorInfo.priority;
+			this.Operator0 = operatorInfo.Operator0;
+			this.factory = operatorInfo.factory;
+			this.tag = operatorInfo.tag;
+			this.dot = operatorInfo.dot;
+			this.reverse = operatorInfo.reverse;
+			return this;
+		}
+
 		public OperatorInfo(string mark, OperatorType type, int priority,TwoElementsOperator so, ObjectFactory factory = null, string tag = "raw") : this(mark, type, priority, Helper.toSourceOperator(so), factory, tag)
 
 		{
@@ -767,6 +789,12 @@ namespace DVLib.LabDataHelper
 			var v=solveLR(text, ois, infos, manager);
 			return new Operator(ois.operatorInfo.Operator0, manager.GetMathObject(v[0].name, v[0].infos),
 				manager.GetMathObject(v[1].name, v[1].infos));
+		}
+	 internal	static MathObject RuntimeLR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
+		{
+			var v = solveLR(text, ois, infos, manager);
+			return new Operator(ois.operatorInfo.Operator0, manager.Run(v[0].name),
+				manager.Run(v[1].name));
 		}
 		internal static (string name, List<OperatorScanInfo> infos)[] solveLR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
@@ -836,6 +864,7 @@ namespace DVLib.LabDataHelper
 	internal static	(string name,List<OperatorScanInfo> infos)[] solveFunc(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
 			int r = ois.operatorInfo.mark.Length;
+
 			text = text.Substring(r);
 			int tt = Helper.clean(ref text);
 			List<int> pos = Helper.findDot(text,ois.operatorInfo.dot);
@@ -1014,6 +1043,7 @@ namespace DVLib.LabDataHelper
 				var nc = new Dictionary<string, OperatorInfo>[l];
 				Array.Copy(context, nc,maxLength);
 				context = nc;
+				capacity = l;
 			}
 			if(l>maxLength)
 			{
@@ -1026,8 +1056,8 @@ namespace DVLib.LabDataHelper
 
 			if(context[l - 1].ContainsKey(info.mark))
 			{
-				var t = context[l - 1][info.mark];
-				context[l - 1][info.mark] = info;
+				var t = new OperatorInfo(context[l - 1][info.mark]);
+				context[l - 1][info.mark].copyForm ( info);
 				return t;
 			}
 
