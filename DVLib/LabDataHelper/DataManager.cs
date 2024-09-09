@@ -31,11 +31,12 @@ namespace DVLib.LabDataHelper
 		{ 	get { return dataSets[x];
 			}}
 		
-		public void addNewData(string name,string decribe)
+		public int addNewData(string name,string decribe)
 		{
 			var D = new DataSet(name, decribe);
 			dataSets.Add(D);
 			OnChnage(D,EventType.NewSet);
+			return Count - 1;
 
 		}
 		public void addValue(int index,double value)

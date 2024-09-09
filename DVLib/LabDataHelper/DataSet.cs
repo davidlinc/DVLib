@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -85,6 +86,7 @@ namespace DVLib.LabDataHelper
 			info.write(name,describe,data.ToArray());
 		}
 
+		
 		public DataSet read(InfoStream info) {
 		name=info.readString();
         describe=info.readString();
