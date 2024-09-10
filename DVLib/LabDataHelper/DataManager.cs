@@ -1,5 +1,6 @@
 ﻿using DVOSLib;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -10,7 +11,7 @@ namespace DVLib.LabDataHelper
 {
 
 	public delegate double DataConverter(double rawData);
-	public class DataManager
+	public class DataManager:IEnumerable<DataSet>
 	{
 		string name_;
 	public	string name{ get { return name_; } set { name_ = value;OnChnage(null, EventType.ChangeName); } }
@@ -26,7 +27,7 @@ namespace DVLib.LabDataHelper
 			this.name_ = name;
 			this.text = des;
 		}
-
+	
 		public DataSet this[int x]
 		{ 	get { return dataSets[x];
 			}}
@@ -39,21 +40,24 @@ namespace DVLib.LabDataHelper
 			return Count - 1;
 
 		}
-		public void addValue(int index,double value)
+		public void addValue(int index,double value,bool aloud=true)
 		{
 			dataSets[index].data.Add(value);
+			if(aloud)
 			OnChnage(dataSets[index],EventType.NewValue);
 
 		}
-		public void changeValue(int index,int index2,double value)
+		public void changeValue(int index,int index2,double value,bool aloud=true)
 		{
 			dataSets[index].data[index2]=value;
+			if(aloud)
 			OnChnage(dataSets[index],EventType.ChangeValue);
 
 		}
-		public void removeValue(int index, int index2)
+		public void removeValue(int index, int index2,bool aloud=true)
 		{
 			dataSets[index].data.RemoveAt(index2);
+			if(aloud)
 			OnChnage(dataSets[index],EventType.RemoveValue);
 		}
 		public void changeName(int index,string name)
@@ -117,6 +121,16 @@ namespace DVLib.LabDataHelper
 			for(int i = 0;i < c;i++) {
 			dataSets.Add(new DataSet().read(stream));
 			}
+		}
+
+		public IEnumerator<DataSet> GetEnumerator()
+		{
+			return dataSets.GetEnumerator();
+		}
+
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return dataSets.GetEnumerator();
 		}
 	}
 }

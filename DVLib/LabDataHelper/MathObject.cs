@@ -19,7 +19,8 @@ namespace DVLib.LabDataHelper
 	public delegate double OneElementOperator(double a);
 	public delegate double SourceOperator(params double[] doubles);
 	public delegate MathObject ObjectFactory(string code,OperatorScanInfo selected, List<OperatorScanInfo> infos,MathObjectManager manager);
-
+	public delegate MathObject MathMaster();
+	public delegate MathObject MethodFactory(MathObjectManager manager, params (string, List<OperatorScanInfo>)[] vars);
 
 	public delegate bool OperatorInfoCondition(OperatorInfo info);
 	public enum OperatorType
@@ -309,6 +310,7 @@ namespace DVLib.LabDataHelper
 							}
 						}
 						MathObject m = manager.GetMathObject(v[1].name, v[1].infos);
+
 						manager.registerFunc(names[0], m, "runtime");
 					    manager.removeWithTag("temp");
 						foreach (OperatorInfo o in old)
@@ -458,10 +460,26 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo(name, OperatorType.Func, max,(double[] data)=> ( mathObject.getValue(data) ),null, tag));
 		}
 
-		public MathObject Run(string text)
+		public void regiseterMethod(string name ,MethodFactory method,SourceOperator op=null)
 		{
-		Helper.	clean(ref text);
+			register(name, OperatorType.Func, max, op, (string code, OperatorScanInfo selected, List<OperatorScanInfo> infos, MathObjectManager manager) => { 	
+				var v=OperatorInfo.solveFunc(code, selected, infos, manager);
+				return method(this, v);
+			},"Method");
+		}
+
+		public MathObject Run(string text,bool runtime=false)
+		{
+			
+			if(runtime)
+			{
+				return new RuntimeMathObject(() => Run(text, false));
+			}
+		   Helper.clean(ref text);
+			
+			
 			List<OperatorScanInfo> info = new List<OperatorScanInfo>();
+			
 			ScanForOperators( text, info);
 			return GetMathObject(text, info);
 
@@ -965,7 +983,7 @@ namespace DVLib.LabDataHelper
 
 	public abstract class MathObject
 	{
-
+		internal bool isRuntime=false;
 		public abstract double getValue(params double[] ms);
 	}
 
@@ -1085,6 +1103,18 @@ namespace DVLib.LabDataHelper
 		}
 	}
 
+	public class RuntimeMathObject:MathObject
+	{
+		MathMaster MathMaster;
+		public RuntimeMathObject(MathMaster mathMaster)
+		{
+			this.MathMaster = mathMaster;
+		}
+		public override double getValue(params double[] ms)
+		{
+			return MathMaster().getValue(ms);
+		}
+	}
 	public class Operator : MathObject
 	{
 		MathObject[] A;
