@@ -313,7 +313,7 @@ namespace DVLib.LabDataHelper
 								old.Add(olds);
 							}
 						}
-						MathObject m = manager.GetMathObject(v[1].name, v[1].infos);
+						MathObject m = manager.Run(v[1].name);
 
 						manager.registerFunc(names[0], m, "runtime");
 						manager.removeWithCondition((v) => { return v.tag.StartsWith("tempindex"); });
@@ -973,8 +973,11 @@ var r = solveLR(text, ois, infos, manager);
 	internal static	(string name,List<OperatorScanInfo> infos)[] solveFunc(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
 			int r = ois.operatorInfo.mark.Length;
-
-			text = text.Substring(r);
+			if(text.Length<=r)
+			{
+				return new (string name, List<OperatorScanInfo> infos)[0];
+			}
+			   text = text.Substring(r);
 			int tt = Helper.clean(ref text);
 			List<int> pos = Helper.findDot(text,ois.operatorInfo.dot);
 			int funcSize = pos.Count + 1;
