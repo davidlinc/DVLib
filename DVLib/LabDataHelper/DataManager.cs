@@ -66,6 +66,57 @@ namespace DVLib.LabDataHelper
 			OnChnage(dataSets[index],EventType.ChangeName);
 		}
 
+		
+		public double[] getDataFromMean(int length,DataConverter converter=null)
+		{
+			if (converter == null)
+			{
+				converter = d => d;
+			}
+			length = Math.Min(Count, length);
+			double[] doubles = new double[length];
+			for (int i = 0; i < length; i++)
+			{
+				
+					doubles[i] = converter(dataSets[i].Mean);
+				
+			}
+			return doubles;
+		}
+		public double[] getRefData(double[] doubles,double refNum=0)
+		{
+			double refd = doubles[0];
+			double[] r = new double[doubles.Length];
+			for (int i = 0; i < doubles.Length; i++)
+			{
+
+				r[i] = doubles[i] - refd+refNum;
+			}
+
+			return r;
+		}
+		public double[] getDataFromDescribe(int length,DataConverter converter=null)
+		{
+			if(converter==null)
+			{
+				converter = d => d;
+			}
+
+			length=Math.Min(Count, length);
+			double[] doubles = new double[length];
+			for(int i = 0; i < length; i++)
+			{
+				try
+				{
+					doubles[i] =converter( double.Parse(dataSets[i].describe));
+				}
+				catch
+				{
+					doubles[i]= 0;
+				}
+			}
+			return doubles;
+		}
 	public	static double CalculateRSquared(double[] actual, double[] predicted)
 		{
 			
