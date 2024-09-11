@@ -65,7 +65,24 @@ namespace DVLib.LabDataHelper
 			dataSets[index].name = name;
 			OnChnage(dataSets[index],EventType.ChangeName);
 		}
-		public void changeDescribe(int index, string describe)
+
+	public	static double CalculateRSquared(double[] actual, double[] predicted)
+		{
+			
+
+			double actualMean = actual.Average();
+
+			// 计算总平方和 (Total Sum of Squares, SST)
+			double sst = actual.Sum(val => Math.Pow(val - actualMean, 2));
+
+			// 计算残差平方和 (Residual Sum of Squares, SSR)
+			double ssr = actual.Zip(predicted, (a, p) => Math.Pow(a - p, 2)).Sum();
+
+			// 计算 R²
+			return 1 - (ssr / sst);
+		}
+	
+	public void changeDescribe(int index, string describe)
 		{
 			dataSets[index].describe = describe;
 			OnChnage(dataSets[index],EventType.ChangeText);
