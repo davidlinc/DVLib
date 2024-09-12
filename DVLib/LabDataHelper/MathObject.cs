@@ -10,7 +10,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using static System.Net.Mime.MediaTypeNames;
-
+using  OperatorScanInfo=DVLib.LabDataHelper.ScanInfo<DVLib.LabDataHelper.MathObject,DVLib.LabDataHelper.OperatorInfo, DVLib.LabDataHelper.MathObjectManager>;
+using ObjectFactory = DVLib.LabDataHelper.Factory<DVLib.LabDataHelper.MathObject, DVLib.LabDataHelper.OperatorInfo, DVLib.LabDataHelper.MathObjectManager>;
 namespace DVLib.LabDataHelper
 {
 
@@ -18,11 +19,9 @@ namespace DVLib.LabDataHelper
 	public delegate double TwoElementsOperator(double a,double b);
 	public delegate double OneElementOperator(double a);
 	public delegate double SourceOperator(params double[] doubles);
-	public delegate MathObject ObjectFactory(string code,OperatorScanInfo selected, List<OperatorScanInfo> infos,MathObjectManager manager);
 	public delegate MathObject MathMaster(MathObjectManager manager, params (string, List<OperatorScanInfo>)[] vars );
 	public delegate (object,SourceOperator) MethodFactory(MathObjectManager manager, params (string, List<OperatorScanInfo>)[] vars);
 
-	public delegate bool OperatorInfoCondition(OperatorInfo info);
 	public enum OperatorType
 	{
 		LeftRight,Left,Right,Func,Source,LeftRightOrRight
@@ -30,18 +29,17 @@ namespace DVLib.LabDataHelper
 
 
 
-	public class MathObjectManager
+	public class MathObjectManager:ObjectManager<MathObject,OperatorInfo,MathObjectManager>
 	{
-		static int max = 6;
-		static int maxPriority = 0;
-		static Random random = new Random();
+		 int max = 6;
+		int maxPriority = 0;
+		Random random = new Random();
 
 		internal static MathObject error = new NumberObject(double.NaN);
 		internal static MathObject trueO = new NumberObject(1);
 		internal static MathObject falseO = new NumberObject(0);
 		internal static MathObject nullO = new NumberObject(-1);
-		static Dictionary<char,HeadCharSet> stringLic = new Dictionary<char, HeadCharSet>();
-		bool canOver = true;
+	bool canOver = true;
 
 		public MathObjectManager()
 		{
@@ -113,106 +111,23 @@ namespace DVLib.LabDataHelper
 		{
 		return	register(new OperatorInfo(mark, type, priority, so,factory, tag));
 		}
-		OperatorInfo register(OperatorInfo info)
-		{
-			if(info.priority+1>maxPriority)
-			{
-				maxPriority=info.priority+1;
-			}
-			string mk = info.mark;
-			char head = mk[0];
-			HeadCharSet hc;
-			if(stringLic.TryGetValue(head,out hc))
-			{
-              return hc.Add(info);
-			}
-			else
-			{
-				hc=new HeadCharSet(head);
-				hc.Add(info);
-				stringLic.Add(head, hc);
-			}
-			return null;
-		}
+	
 
-	OperatorInfo match(string name)
-		{
-			if(name.Length>0)
-			{ 
-				char head= name[0];
-				HeadCharSet h;
-				if(stringLic.TryGetValue(head,out h))
-				{
-					return h.Match(name);
-				}
-            }
-			
-			return null;
-		}
-		bool removeInfo(string name)
-		{
-			if (name.Length > 0)
-			{
-				char head = name[0];
-				HeadCharSet h;
-				if (stringLic.TryGetValue(head, out h))
-				{
-					if(h.tryRemoveKey(name))
-					{
-						return true;
-					}
-				}
-			}
-			return false;
-		}
+
 
 	
-		List<string> findWithTag(string tag)
-		{
-			List<string> list = new List<string>();
-            foreach (var item in stringLic)
-            {
-				
-				item.Value.findWithTag(tag, list);
-            }
-            return list;
-		}
 
-		List<string> findWithCondition(OperatorInfoCondition condition)
-		{
-			List<string> list = new List<string>();
-			foreach (var item in stringLic)
-			{
-				item.Value.findWithCondition(condition, list);
-			}
-			return list;
-		}
-		public void removeWithTag(string tag)
-		{
-			var l=findWithTag(tag);
-			foreach (var item in l)
-			{
-				removeInfo(item);
-			}
-		}
 
-		public void clear()
+	
+	
+
+		public override void clear()
 		{
-			
-			foreach(var v in stringLic)
-			{
-				v.Value.clear();
-			}
+
+			base.clear();
 			registerDefault();
 		}
-		public void removeWithCondition(OperatorInfoCondition tag)
-		{
-			var l = findWithCondition(tag);
-			foreach (var item in l)
-			{
-				removeInfo(item);
-			}
-		}
+	
 		
 		public void Add(string s)
 		{
@@ -623,57 +538,8 @@ namespace DVLib.LabDataHelper
 
 	
 
-		public void ScanForOperators( string text,List<OperatorScanInfo> list)
-		{
-			
-			ReadOnlySpan<char> text_=text.AsSpan();
-			int leftParentheses = 0;
-			int rightParentheses = 0;
-			int level;
-			OperatorScanInfo osi;
-			char c;
-			HeadCharSet hs;
-			OperatorInfo info;
-			for(int i=0;i<text_.Length;i++)
-			{
-				if (text_[i]=='(')
-				{
-					leftParentheses++;
-				}
-				if (text_[i]==')')
-				{
-					rightParentheses++;
-				}
-				c = text_[i];
-				if(stringLic.TryGetValue(c, out hs))
-				{
-					info = hs.Match(text_.Slice(i));
-						if(info !=null)
-					{
-						level = leftParentheses - rightParentheses;
-						osi = new OperatorScanInfo(i, level, info);
-						list.Add(osi);
-						i += info.mark.Length - 1;
-					}
-
-				}
-			}
-		}
 	}
-	public class OperatorScanInfo
-	{
-		internal OperatorScanInfo(int p,int l,OperatorInfo o)
-		{
-			position = p;
-			level = l;
-			operatorInfo = o;
 
-		}
-	    internal int position;
-		internal int fixedPosition { get { if(operatorInfo.reverse) return-position ;return position; } }
-		internal int level;
-		internal OperatorInfo operatorInfo;
-	}
 
 	public static class Helper
 	{
@@ -807,26 +673,20 @@ namespace DVLib.LabDataHelper
 		}
 	}
 
-	public class OperatorInfo
+	public class OperatorInfo:ObjectInfo<MathObject,OperatorInfo,MathObjectManager>
 	{
 
-		public string mark{get; private set;}
-		public OperatorType type { get; private set; }
-		internal SourceOperator Operator0 { get; private set; }
+		internal SourceOperator Operator0 { get; private set; }	
 
-		internal ObjectFactory factory = null;
-		public int priority { get; private set; }
-		public string tag { get; private set; }
+		public OperatorInfo()
+		{
 
-		internal char dot = ',';
-
-		internal bool reverse = false;
-		
+		}
 		public OperatorInfo(OperatorInfo other)
 		{
 			copyForm(other);
 		}
-		public OperatorInfo(string mark, OperatorType type,int priority,SourceOperator so,ObjectFactory factory=null,string tag="raw")
+		public OperatorInfo(string mark, OperatorType type,int priority,SourceOperator so,ObjectFactory factory=null,string tag="raw"):base()
 	
 		{
 			this.mark = mark;
@@ -1081,122 +941,7 @@ var r = solveLR(text, ois, infos, manager);
 		public abstract double getValue(params double[] ms);
 	}
 
-	public class HeadCharSet
-	{
-		internal char head;
-		internal int maxLength;
-		internal int capacity = 8;
-		Dictionary<string, OperatorInfo>[] context;
-
-		public HeadCharSet(char head)
-		{
-			this.head = head;
-			this.maxLength = 0;
-			this.context = new Dictionary<string, OperatorInfo>[capacity];
-		}
-
-		public void clear()
-		{
-			foreach(var v in context)
-			{
-				if(v!=null)
-				v.Clear();
-			}
-		}
-		public bool tryRemoveKey(string key)
-		{
-			int i = key.Length - 1;
-			if(i>=0&&i<maxLength)
-			{
-				var d = context[i];
-				if(d.ContainsKey(key))
-				{
-					d.Remove(key);
-					return true;
-				}
-			}
-			return false;
-		}
-
-		internal void findWithTag(string tag,List<string> list)
-		{
-			foreach(var v in context)
-			{
-				if(v!=null)
-				foreach (var k in v)
-				{
-					if(k.Value.tag==tag)
-					{
-						list.Add(k.Key);
-					}
-				}
-			}
-		}
-		internal void findWithCondition(OperatorInfoCondition condition, List<string> list)
-		{
-			foreach (var v in context)
-			{
-				if (v != null)
-					foreach (var k in v)
-				{
-					if (condition(k.Value))
-					{
-						list.Add(k.Key);
-					}
-				}
-			}
-		}
-		public OperatorInfo Add(OperatorInfo info)
-		{
-			string mk = info.mark;
-			int l=mk.Length;
-			if(l>capacity)
-			{
-				var nc = new Dictionary<string, OperatorInfo>[l];
-				Array.Copy(context, nc,maxLength);
-				context = nc;
-				capacity = l;
-			}
-			if(l>maxLength)
-			{
-				maxLength = l;
-			}
-			if (context[l - 1] == null)
-			{
-				context[l - 1] = new Dictionary<string, OperatorInfo>(); 
-			}
-
-			if(context[l - 1].ContainsKey(info.mark))
-			{
-				var t = new OperatorInfo(context[l - 1][info.mark]);
-				context[l - 1][info.mark].copyForm ( info);
-				return t;
-			}
-
-			context[l-1].Add(info.mark, info);
-			return null;
-		}
-
-		public OperatorInfo Match(ReadOnlySpan<char> input)
-		{
-			int indexMax=Math.Min(maxLength, input.Length)-1;
-			for(int i=indexMax; i>=0;i--)
-			{
-				var v= context[i];
-				if(v!=null)
-				{
-					OperatorInfo oi;
-					if(v.TryGetValue(input.Slice(0,i+1).ToString(),out oi))
-					{
-						return oi;
-					}
-
-				}
-			}
-			return null;
-		}
-	}
-
+	
 	public class RuntimeMathObject:MathObject
 	{
 		MathMaster MathMaster;
