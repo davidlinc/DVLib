@@ -34,7 +34,6 @@ namespace DVOSLib
 		{
 			register(InfoType.VECTOR2, (i, o) => { i.writeVector2((Vector2)o); }, (i) => { return i.readVector2(); }, typeof(Vector2));
 			register(InfoType.VECTOR3, (i, o) => { i.writeVector3((Vector3)o); }, (i) => { return i.readVector3(); }, typeof(Vector3));
-
 		}
 
 		internal byte[] bytes = new byte[1];

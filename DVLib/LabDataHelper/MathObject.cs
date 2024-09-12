@@ -12,6 +12,7 @@ using System.Xml.Linq;
 using static System.Net.Mime.MediaTypeNames;
 using  OperatorScanInfo=DVLib.LabDataHelper.ScanInfo<DVLib.LabDataHelper.MathObject,DVLib.LabDataHelper.OperatorInfo, DVLib.LabDataHelper.MathObjectManager>;
 using ObjectFactory = DVLib.LabDataHelper.Factory<DVLib.LabDataHelper.MathObject, DVLib.LabDataHelper.OperatorInfo, DVLib.LabDataHelper.MathObjectManager>;
+using DVLib.LabDataHelper.MathObjectSystem;
 namespace DVLib.LabDataHelper
 {
 
@@ -19,42 +20,75 @@ namespace DVLib.LabDataHelper
 	public delegate double TwoElementsOperator(double a,double b);
 	public delegate double OneElementOperator(double a);
 	public delegate double SourceOperator(params double[] doubles);
-	public delegate MathObject MathMaster(MathObjectManager manager, params (string, List<OperatorScanInfo>)[] vars );
+	public delegate MathObject MathMaster(MathObjectManager manager,RuntimeMathObject executor, params (string, List<OperatorScanInfo>)[] vars );
 	public delegate (object,SourceOperator) MethodFactory(MathObjectManager manager, params (string, List<OperatorScanInfo>)[] vars);
+	public delegate void OnReturn(object o);
+	public delegate void AfterRun<T>(T o);
+	
 
-	public enum OperatorType
-	{
-		LeftRight,Left,Right,Func,Source,LeftRightOrRight
-	}
 
 
 
 	public class MathObjectManager:ObjectManager<MathObject,OperatorInfo,MathObjectManager>
 	{
 		 int max = 6;
-		int maxPriority = 0;
 		Random random = new Random();
-
+		StringDictionary<(string, string)> toReplace = new StringDictionary<(string, string)>();
 		internal static MathObject error = new NumberObject(double.NaN);
 		internal static MathObject trueO = new NumberObject(1);
 		internal static MathObject falseO = new NumberObject(0);
+
 		internal static MathObject nullO = new NumberObject(-1);
-	bool canOver = true;
+	    bool canOver = true;
+
+		internal int runCodeMode = 0;
+		static StringBuilder SB = new StringBuilder();
+		Stack<OnReturn> funcReturnStack = new Stack<OnReturn>();
 
 		public MathObjectManager()
 		{
-			registerDefault();
+
+		}
+		static MathObjectManager()
+		{
 		}
 
-		void registerDefault()
+		public void addReturn(OnReturn @return)
 		{
+			funcReturnStack.Push(@return);
+
+		}
+
+		public void removeReturn()
+		{
+			funcReturnStack.TryPop(out OnReturn or);
+		}
+
+		public void returnObject(object o)
+		{
+	        if(funcReturnStack.TryPeek(out OnReturn r))
+			{
+				r(o);
+
+			}
+			else
+			{
+			}
+		}
+
+		public override	void  registerDefault()
+		{
+			
 			register(new OperatorInfo("+", OperatorType.LeftRight, max-4, Helper.toSourceOperator((a, b) => { return a + b; })));
-			register(";", OperatorType.LeftRight, 0, Helper.toSourceOperator((a, b) => { return 0; }),OperatorInfo.RuntimeLR);
+			register(";", OperatorType.RUNCODE, 0, Helper.toSourceOperator((a, b) => { return 0; }),OperatorInfo.RuntimeLR);
 			register(new OperatorInfo("=", OperatorType.LeftRight, 1, Helper.toSourceOperator((a, b) => { return 0; }),EQ	
 				).setReverse());
 			register(new OperatorInfo("-", OperatorType.LeftRightOrRight, max-3,
 				(double[] data) => { if (data.Length == 1) return -data[0]; return data[0] - data[1]; }
 				));
+			register(new OperatorInfo("if", OperatorType.RUNCODE, max ,error.getValue,IF));
+			register(new OperatorInfo("return", OperatorType.RUNCODE, 2, error.getValue, RETURN));
+			register(new OperatorInfo("{", OperatorType.RUNCODE, max+1, error.getValue, CODEBLOCK));
 			register(new OperatorInfo("/", OperatorType.LeftRight, max-2, (a, b) => { return a / b; }));
 			register(new OperatorInfo("*", OperatorType.LeftRight, max-2, (a, b) => { return a * b; }));
 			register(new OperatorInfo("%", OperatorType.LeftRight, max-2, (a, b) => { return a % b; }));
@@ -111,15 +145,7 @@ namespace DVLib.LabDataHelper
 		{
 		return	register(new OperatorInfo(mark, type, priority, so,factory, tag));
 		}
-	
 
-
-
-	
-
-
-	
-	
 
 		public override void clear()
 		{
@@ -127,8 +153,32 @@ namespace DVLib.LabDataHelper
 			base.clear();
 			registerDefault();
 		}
-	
-		
+
+		public override string formalizeCode(string s)
+		{
+			SB.Clear();
+			SB.EnsureCapacity(s.Length);
+			var ss = s.AsSpan();
+			char v;
+			for(int i = 0;i < ss.Length; i++)
+			{
+				v = ss[i];
+				if(v!=' '&&v!='\n')
+				{
+					if(toReplace.match(s,out var pair,i))
+					{
+						SB.Append(pair.Item2);
+						i += pair.Item1.Length - 1;
+					}
+					else
+					{
+						SB.Append(v);
+					}
+				}
+			}
+			var sb = SB.ToString();
+			return sb;
+		}
 		public void Add(string s)
 		{
 			s=s.Trim();
@@ -173,7 +223,174 @@ namespace DVLib.LabDataHelper
 				}
 			}
 		}
+		public override void registerLG(LevelGetter getter)
+		{
 
+			getter.register('(', 1);
+			getter.register(')',-1);
+			getter.register('{', 1);
+			getter.register('}', -1);
+			getter.register('[', 1);
+			getter.register(']', -1);
+
+			toReplace.Add("}{", ("}{", "};{"));
+			toReplace.Add(";}", (";}", ";}"));
+			toReplace.Add("}", ("}", ";}"));
+		}
+		static MathObject CODEBLOCK(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
+		{
+		int end = text.AsSpan().findEnd('{', '}');
+			string block=text.Substring(0, end+1);
+			List<int> pos = new List<int>();
+			string[] ss= block.Substring(1,end).cutZeroLevel(';', manager.levelGetter,pos);
+			for(int i=0; i<ss.Length;i++)
+			{
+				pos[i]++;
+			}
+
+			/*动态代码重新扫描
+			List<OperatorScanInfo>[] scanInfos = new List<OperatorScanInfo>[ss.Length];
+			for(int i=0;i<scanInfos.Length;i++)
+			{
+				scanInfos[i] = new List<OperatorScanInfo>();
+			}
+	
+			foreach(var v in infos)
+			{
+				for(int i=pos.Count-1;i>=0;i--)
+				{		
+					
+					 if (i == 0 )
+					{
+						if (v.position < pos[i])
+						{
+							v.position--;
+							v.level--;
+							scanInfos[i].Add(v);
+						}
+					}
+					else if (v.position < pos[i] && v.position > pos[i-1])
+					{
+							v.position -= pos[i - 1] + 1;
+							v.level--;
+							scanInfos[i].Add(v);
+						     break;		
+					}
+				}
+			}
+			*/
+			MathObject[] mathObjects = new MathObject[ss.Length];
+
+			for(int i=0;i<ss.Length;i++)
+			{
+			
+				mathObjects[i] = manager.Run(ss[i]);
+				
+			}
+
+			return new RuntimeMathObject((m,e,v) =>
+			{
+				foreach(var vm in mathObjects)
+				{
+					if(vm is RuntimeMathObject)
+					{
+						vm.AsRuntime().setValueIn(manager, v);
+					}
+				}
+				return new Operator((d) => { return mathObjects.Length; }, mathObjects);
+			});
+
+		}
+
+
+		static MathObject IF(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
+		{
+			for (int i = 0; i < infos.Count; i++)
+			{
+				DVOS.writeLine(infos[i].operatorInfo.mark + ":" + infos[i].position);
+			}
+
+			var v = OperatorInfo.solveCodeBlock(text, ois, infos, manager);
+
+			if (v.vars.Length > 0)
+			{
+				MathObject[] objects = new MathObject[v.vars.Length];
+				for (int i = 0; i < v.vars.Length; i++)
+				{
+					DVOS.writeLine(v.vars[i].name);
+					foreach(var vm in v.vars[i].infos)
+					DVOS.writeLine(vm.operatorInfo.mark+":"+vm.position);
+					objects[i] = manager.Run(v.vars[i].name);
+				}
+				MathObject vr = null;
+				if (v.code.HasValue)
+				{
+					vr = manager.Run(v.code.Value.name);
+				}
+
+				return new RuntimeMathObject((m, e, vs) =>
+				{
+					(string, List<OperatorScanInfo> infos)[] nr = updatePms(objects, v.vars, vs, v.vars.Length, manager);
+					MathObject[] objects2 = new MathObject[nr.Length];
+					for (int i = 0; i < v.vars.Length; i++)
+					{
+						objects2[i] = manager.Run(nr[i].Item1, false);
+					}
+
+					return new Operator((d) =>
+					{
+
+						if (d.Length > 0)
+						{
+
+							if (d[d.Length - 1] > 0 && vr != null)
+							{
+
+								if (vr is RuntimeMathObject)
+								{
+
+									((RuntimeMathObject)vr).setValueIn(m, vs);
+
+								}
+								vr.getValue(d);
+							}
+						}
+						return 0;
+					}, objects2);
+				});
+			}
+
+			return error;
+
+		}
+
+
+
+		static MathObject RETURN(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
+		{
+			
+			var v=OperatorInfo.solveR(text, ois, infos, manager);
+
+			return new RuntimeMathObject(
+				(a, b, c) =>
+				{
+
+					var mo = manager.Run(v.name);
+					if (mo is RuntimeMathObject)
+					{
+						mo.AsRuntime().setValueIn(manager, c);
+						mo.AsRuntime().setAfter(e => manager.returnObject(e.valueOut));
+						return mo.AsRuntime();
+					}
+
+
+
+					return new Operator(mo.getValue);
+				});
+
+			return error;
+
+		}
 		static MathObject EQ(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
 			var v=OperatorInfo.solveLR(text, ois, infos, manager);
@@ -231,6 +448,7 @@ namespace DVLib.LabDataHelper
 						MathObject m = manager.Run(v[1].name);
 
 						manager.registerFunc(names[0], m, "runtime");
+
 						manager.removeWithCondition((v) => { return v.tag.StartsWith("tempindex"); });
 						foreach (OperatorInfo o in old)
 						{
@@ -251,7 +469,7 @@ namespace DVLib.LabDataHelper
 
 				if (funcname != null && func != null)
 				{
-					MathObject m = manager.GetMathObject(v[1].name, v[1].infos);
+					MathObject m = manager.GetObject(v[1].name, v[1].infos);
 					r = m.getValue();
 					manager.registerSource(v[0].name, r,"runtime");
 				}
@@ -373,50 +591,88 @@ namespace DVLib.LabDataHelper
 				return value;
 			}, null,tag);
 		}
-		public void registerFunc(string name,MathObject mathObject,string tag="customize")
+
+
+
+		public  (string s, List<OperatorScanInfo> r) fixForFunc((string s, List<OperatorScanInfo> r) r, (string s, List<OperatorScanInfo> r)[] v)
 		{
-			if(match(name)==null||canOver)
 
-			register(new OperatorInfo(name, OperatorType.Func, max,(double[] data)=> ( mathObject.getValue(data) ), (string code, OperatorScanInfo selected, List<OperatorScanInfo> infos, MathObjectManager manager) => {
-				var r = OperatorInfo.solveFunc(code, selected, infos, manager);
-				int funcSize = r.Length;
-				MathObject[] mathObjects = new MathObject[funcSize];
-				int id = 0;
-				for (int i = 0; i < funcSize; i++)
+			ReadOnlySpan<char> chars = r.s.AsSpan();
+			string[] strings = new string[chars.Length];
+			for (int i = 0; i < chars.Length; i++)
+			{
+				strings[i] = chars[i].ToString();
+			}
+			for (int i = 0; i < r.r.Count; i++)
+			{
+				if (r.r[i].tag.StartsWith("tempindex"))
 				{
-					mathObjects[i] = manager.GetMathObject(r[i].name, r[i].infos);
-				}
-			return new RuntimeMathObject((m,vs) => {
-
-					(string, List<OperatorScanInfo> infos)[] nr = new (string, List<OperatorScanInfo> infos)[funcSize];
-					for(int i = 0;i < funcSize;i++)
+					int index = int.Parse(r.r[i].tag.Substring(9));
+					if (index > -1 &&v!=null&& index < v.Length)
 					{
-						nr[i] = r[i];	
-						if(mathObjects[i] is SourceObject )
+						int pos = r.r[i].position;
+						if (pos >= 0 && pos < strings.Length)
 						{
-							int ind = ((SourceObject)mathObjects[i]).index;
-							if(ind>=0&&vs!=null&&ind<vs.Length)
-							{
-								nr[i] = vs[ind];
-							}
+						strings[pos] = v[index].s;
 						}
 					}
-					
-
-				if(mathObject is RuntimeMathObject)
-				{
-					((RuntimeMathObject)mathObject).setValueIn(m,nr);
-					return mathObject;
 				}
-				return new Operator(selected.operatorInfo.Operator0, mathObjects);
 			}
-
-					).setValueIn(this, r);
-
-
-			}, tag));
+			SB.Clear();
+			foreach (var s in strings)
+			{
+				SB.Append(s);
+			}
+			List<OperatorScanInfo> infos = new List<OperatorScanInfo>();
+			string t = SB.ToString();
+			ScanForOperators(ref t, infos);
+			return (t, infos);
 		}
 
+
+		public void registerFunc(string name,MathObject mathObject,string tag="customize")
+		{
+			if (match(name) == null || canOver)
+				register(new OperatorInfo(name, OperatorType.Func, max, (double[] data) => (mathObject.getValue(data)), (string code, OperatorScanInfo selected, List<OperatorScanInfo> infos, MathObjectManager manager) =>
+				{
+					var r = ObjectInfo<MathObject, OperatorInfo, MathObjectManager>.solveFunc(code, selected, infos, manager);
+					int funcSize = r.Length;
+					MathObject[] mathObjects = new MathObject[funcSize];
+					int id = 0;
+					for (int i = 0; i < funcSize; i++)
+					{
+						mathObjects[i] = manager.GetObject(r[i].name, r[i].infos);
+					}
+					var rmo = new RuntimeMathObject((m,e, vs) =>
+					{
+						
+						addReturn(o => { e.setValueOut(o);});
+						e.setAfter(manager => removeReturn());
+						(string, List<OperatorScanInfo> infos)[] nr = updatePms(mathObjects, r, vs, funcSize, this);
+						if (mathObject is RuntimeMathObject)
+						{
+							((RuntimeMathObject)mathObject).setValueIn(m,  nr);
+							return mathObject;
+						}
+						return new Operator(selected.operatorInfo.Operator0, mathObjects);
+					}
+							);
+
+					return rmo;
+				}, tag));
+		}
+
+		static (string, List<OperatorScanInfo> infos)[] updatePms(MathObject[] mathObjects, (string, List<OperatorScanInfo>)[] r, (string, List<OperatorScanInfo>)[] vs,int funcSize,MathObjectManager m)
+		{
+
+
+			(string, List<OperatorScanInfo> infos)[] nr = new (string, List<OperatorScanInfo> infos)[funcSize];
+			for (int i = 0; i < funcSize; i++)
+			{
+				nr[i] = m.fixForFunc( r[i],vs);
+			}
+			return nr;
+		}
 		public void regiseterMethod(string name ,MethodFactory method,SourceOperator op=null)
 		{
 			register(name, OperatorType.Func, max, op, (string code, OperatorScanInfo selected, List<OperatorScanInfo> infos, MathObjectManager manager) => {
@@ -426,117 +682,65 @@ namespace DVLib.LabDataHelper
 				int id = 0;
 				for (int i = 0; i < funcSize; i++)
 				{
-					mathObjects[i] = manager.GetMathObject(r[i].name, r[i].infos);
+					mathObjects[i] = manager.GetObject(r[i].name, r[i].infos);
 				}
 
-				return new RuntimeMathObject((m,vs) => {
+				var rtm= new RuntimeMathObject((m,e, vs) => {
 
-					(string, List<OperatorScanInfo> infos)[] nr = new (string, List<OperatorScanInfo> infos)[funcSize];
-					for(int i = 0;i < funcSize;i++)
-					{
-						nr[i] = r[i];	
-						if(mathObjects[i] is SourceObject )
-						{
-							int ind = ((SourceObject)mathObjects[i]).index;
-							if(ind>=0&&vs!=null&&ind<vs.Length)
-							{
-								nr[i] = vs[ind];
-							}
-						}
-					}
-					
-
-					
-				var rr = method(this, nr); 
+					(string, List<OperatorScanInfo> infos)[] nr = updatePms(mathObjects, r, vs, funcSize,this);
+			
+					addReturn(o => { e.setValueOut(o); });
+				    var rr = method(this, nr);
+					returnObject(rr.Item1);
+					removeReturn();
 					return new MethodObject(rr.Item2, rr.Item1); });
-				
+				return rtm;
 			
 			},"Method");
 		}
 
 		public MathObject Run(string text,bool runtime=false)
 		{
+
 			
 			if(runtime)
 			{
-				return new RuntimeMathObject((a,b) => Run(text, false));
+				return new RuntimeMathObject((a,e,b) => Run(text, false));
 			}
 		   Helper.clean(ref text);
 			
 			
 			List<OperatorScanInfo> info = new List<OperatorScanInfo>();
-			
-			ScanForOperators( text, info);
-			return GetMathObject(text, info);
+			var r = ScanForOperators(ref text, info);
+			if(r.containsType(OperatorType.RUNCODE))
+			{
+				runCodeMode++;
+				var go = GetObject(text, info);
+				runCodeMode--;
 
+				return go;
+			}
+			return GetObject(text, info);
 		}
-		public MathObject GetMathObject(string text,List<OperatorScanInfo> infos) 
-		{
-			int t = Helper.clean(ref text);
-			
-
-
-
-			List<OperatorScanInfo>[] plist = new List<OperatorScanInfo>[maxPriority];
-			
-			
-			
-			for(int i = 0; i < maxPriority; i++)
-			{
-				plist[i]	=new List<OperatorScanInfo>();
-			}
-
-			foreach(var v in infos)
-			{
-				v.position -= t;
-				v.level -= t;
-				if(v.level==0)
-				{
-					plist[v.operatorInfo.priority].Add(v);
-				}
-			}
-			OperatorScanInfo ois=null;
-
-			foreach(var v in plist)
-			{
-				if(v.Count>0)
-				{
-					int maxPos = int.MinValue;
-					
-					foreach(var i in v)
-					{
-						if(i.fixedPosition>maxPos)
-						{
-							maxPos = i.fixedPosition;
-							ois = i;
-						}
-					}
-					break;
-				}
-			}
-
-			if(ois!=null)
-			{
-				
-				var v = ois.operatorInfo.factory(text, ois, infos, this);
-				return	v;
-			}
-			else
-			{
-				try
-				{
-					return new NumberObject(double.Parse(text));
-				}
-				catch
-				{
-					return error;
-				}
-			}
-			return error;
-
-		}
-
 	
+		public override MathObject getBaseType(string s)
+		{
+			return new NumberObject(double.Parse(s));
+		}
+		public override MathObject getErrorType()
+		{
+			return error;
+		}
+
+		public override MathObject GetObject(string text, List<OperatorScanInfo> infos)
+		{
+			if(runCodeMode>0)
+			{
+			return base.GetObject(text, infos).AsRunCodeMode();
+			}
+
+			return base.GetObject(text,infos);
+		}
 
 	}
 
@@ -588,9 +792,10 @@ namespace DVLib.LabDataHelper
 
 		public static int clean(ref string text)
 		{
+			text = text.Replace(" ", "").Replace("\n", "");
 			text = text.Trim();
-			int i = 0;
-			while (text.StartsWith('(') && text.EndsWith(")"))
+			int i = 0;//|| (text.StartsWith('{') && text.EndsWith("}")
+			while ((text.StartsWith('(') && text.EndsWith(")")))
 			{
 				text = text.Substring(1, text.Length - 2);
 				i++;
@@ -598,6 +803,52 @@ namespace DVLib.LabDataHelper
 			text = text.Trim();
 			return i;
 		}
+		public static string[] cutZeroLevel(this string text, char knife, LevelGetter getter)
+		{ 
+		return cutZeroLevel(text,knife,getter,new List<int>());
+		}
+			public static string[] cutZeroLevel(this string text,char knife,LevelGetter getter,List<int> pos,int fp=-1)
+		{
+			List<string> list = new List<string>();
+			int l = 0;
+			char c;
+			ReadOnlySpan<char> chars = text.AsSpan();
+			int s = fp;
+			for (int i = 0;i<text.Length;i++)
+			{
+				c = chars[i];
+				if(c==knife&&l==0&&i-s>2)
+				{
+					list.Add(chars.Slice(s+1, i - s-1).ToString());
+					pos.Add(i);
+					s = i;
+				}
+				l += getter.getLevel(c);
+			}
+			return list.ToArray();
+		}
+		public static int findEnd(this ReadOnlySpan<char> chars,char start,char end, int startPos=0,List<(int start,int end)> list=null)
+		{
+			if(list == null)
+			{
+				list=new List<(int start, int end)> ();
+			}
+			for (int i = startPos+1;i<chars.Length;i++)
+			{
+				if (chars[i] == start)
+				{
+				
+				  i=findEnd(chars,start,end,i,list);
+				}
+				else if (chars[i] == end)
+				{
+					list.Add((startPos, i));
+					return i;
+				}
+			}
+			return chars.Length;
+		}
+
 
 		public static int findFirstChar(this ReadOnlySpan<char> text, char c)
 		{ 
@@ -716,7 +967,7 @@ namespace DVLib.LabDataHelper
 			return this;
 		}
 
-		public OperatorInfo copyForm(OperatorInfo operatorInfo)
+		public override OperatorInfo copyForm(OperatorInfo operatorInfo)
 		{
 			this.mark = operatorInfo.mark;
 			this.type = operatorInfo.type;
@@ -735,25 +986,48 @@ namespace DVLib.LabDataHelper
 		}
 		static MathObject LR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
+
+		
+
 			var v=solveLR(text, ois, infos, manager);
-			return new Operator(ois.operatorInfo.Operator0, manager.GetMathObject(v[0].name, v[0].infos),
-				manager.GetMathObject(v[1].name, v[1].infos));
+			return new Operator(ois.operatorInfo.Operator0, manager.GetObject(v[0].name, v[0].infos),
+				manager.GetObject(v[1].name, v[1].infos));
 		}
-	 internal	static MathObject RuntimeLR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
+
+		static MathObject RunTimeR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
-			
-		return	new RuntimeMathObject((v,s) =>
+			return new RuntimeMathObject((m,e, vs) =>
 			{
-var r = solveLR(text, ois, infos, manager);
+				var v = solveR(text, ois, infos, manager);
 
+				var mo = manager.GetObject(v.name, v.infos);
+				if(mo is RuntimeMathObject)
+				{
+					mo.AsRuntime().setValueIn(m,vs);
+				}
+				return new Operator(ois.operatorInfo.Operator0,mo );
+
+			});
+		
+		}
+
+		internal	static MathObject RuntimeLR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
+		{
+			var r = solveLR(text, ois, infos, manager);
 			var a = manager.Run(r[0].name);
-
 			var b = manager.Run(r[1].name);
+		return	new RuntimeMathObject((v,e, s) =>
+			{
 
+
+			
+
+				
 				if(a is RuntimeMathObject)
 				{
 					((RuntimeMathObject)a).setValueIn(v, s);
 				}
+
 				if (b is RuntimeMathObject)
 				{
 					((RuntimeMathObject)b).setValueIn(v, s);
@@ -765,54 +1039,15 @@ var r = solveLR(text, ois, infos, manager);
 			});
 
 		}
-		internal static (string name, List<OperatorScanInfo> infos)[] solveLR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
+static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
-			List<OperatorScanInfo> left = new List<OperatorScanInfo>();
-			List<OperatorScanInfo> right = new List<OperatorScanInfo>();
-			int l = ois.position;
-			int r = ois.position + ois.operatorInfo.mark.Length;
-			foreach (var v in infos)
-			{
-				if (v.position < l)
-				{
-					left.Add(v);
-				}
-				else if (v.position >= r)
-				{
-					v.position -= r;
-					right.Add(v);
-				}
-			}
-			return new (string, List<OperatorScanInfo>)[]{(text.Substring(0, l), left),
-				(text.Substring(r), right)};
-		}
-	static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
-		{
-			List<OperatorScanInfo> right = new List<OperatorScanInfo>();
-
-			int r = ois.operatorInfo.mark.Length;
-			foreach (var v in infos)
-			{
-				if (v.position >= r)
-				{
-					v.position -= r;
-					right.Add(v);
-				}
-			}
-			return new Operator(ois.operatorInfo.Operator0,manager. GetMathObject(text.Substring(r), right));
+			var v=solveR(text, ois, infos, manager);
+			return new Operator(ois.operatorInfo.Operator0,manager. GetObject(v.name,v.infos));
 		}
 	static	MathObject L(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
-			List<OperatorScanInfo> left = new List<OperatorScanInfo>();
-			int l = ois.position;
-			foreach (var v in infos)
-			{
-				if (v.position < l)
-				{
-					left.Add(v);
-				}
-			}
-			return new Operator(ois.operatorInfo.Operator0,manager. GetMathObject(text.Substring(0, l), left));
+			var v=solveL(text, ois, infos, manager);
+			return new Operator(ois.operatorInfo.Operator0,manager. GetObject(v.name,v.infos));
 		}
 	static	MathObject RLOR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
@@ -830,64 +1065,6 @@ var r = solveLR(text, ois, infos, manager);
 			return MathObjectManager.error;
 		}
 
-	internal static	(string name,List<OperatorScanInfo> infos)[] solveFunc(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
-		{
-			int r = ois.operatorInfo.mark.Length;
-			if(text.Length<=r)
-			{
-				return new (string name, List<OperatorScanInfo> infos)[0];
-			}
-			   text = text.Substring(r);
-			int tt = Helper.clean(ref text);
-			List<int> pos = Helper.findDot(text,ois.operatorInfo.dot);
-			int funcSize = pos.Count + 1;
-			List<OperatorScanInfo>[] left = new List<OperatorScanInfo>[funcSize];
-			for (int i = 0; i < funcSize; i++)
-			{
-				left[i] = new List<OperatorScanInfo>();
-			}
-
-
-			foreach (var v in infos)
-			{
-				v.level -= tt;
-				v.position -= r;
-				bool notFound = true;
-				for (int i = pos.Count - 1; i >= 0; i--)
-				{
-					if (v.position > pos[i])
-					{
-						notFound = false;
-						left[i + 1].Add(v);
-						v.position -= pos[i] + 1 + tt;
-						break;
-					}
-				}
-				if (notFound)
-				{
-					left[0].Add(v);
-					v.position -= tt;
-				}
-			}
-
-			(string,List<OperatorScanInfo>)[] mathObjects = new (string, List<OperatorScanInfo>)[funcSize];
-			int id = 0;
-			for (int i = 0; i < funcSize; i++)
-			{
-				if (i < pos.Count)
-				{
-					mathObjects[i] = (text.Substring(id, pos[i] - id), left[i]);
-					id = pos[i] + 1;
-				}
-				else
-				{
-
-					mathObjects[i] = (text.Substring(id), left[i]);
-				}
-
-			}
-			return  mathObjects;
-		}
 	static	MathObject Func(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
 			var r=solveFunc(text, ois, infos, manager);
@@ -896,7 +1073,7 @@ var r = solveLR(text, ois, infos, manager);
 			int id = 0;
 			for (int i = 0; i < funcSize; i++)
 			{
-					mathObjects[i] = manager.GetMathObject(r[i].name, r[i].infos);
+					mathObjects[i] = manager.GetObject(r[i].name, r[i].infos);
 			}
 			return new Operator(ois.operatorInfo.Operator0, mathObjects
 
@@ -938,6 +1115,27 @@ var r = solveLR(text, ois, infos, manager);
 	public abstract class MathObject
 	{
 		internal bool isRuntime=false;
+
+		public RuntimeMathObject AsRuntime()
+		{
+			if(this is RuntimeMathObject)
+			{
+				return (RuntimeMathObject)this;
+			}
+			return null;
+		}
+		public virtual RuntimeMathObject AsRuntimeOrWraped()
+		{
+			if (this is RuntimeMathObject)
+			{
+				return (RuntimeMathObject)this;
+			}
+			return new RuntimeMathObject((v,e, s) => { return this; });
+		}
+		public virtual MathObject AsRunCodeMode()
+		{
+			return this;
+		}
 		public abstract double getValue(params double[] ms);
 	}
 
@@ -947,11 +1145,21 @@ var r = solveLR(text, ois, infos, manager);
 		MathMaster MathMaster;
 		public object valueOut { get;internal set; }
 		public (MathObjectManager manager,  (string, List<OperatorScanInfo>)[] vars)? valueIn { get; internal set; }
+
+		AfterRun<RuntimeMathObject> afterRun;
+
+		public void setAfter(AfterRun<RuntimeMathObject> afterRun)
+		{
+			this.afterRun = afterRun;
+		}
 		public RuntimeMathObject(MathMaster mathMaster)
 		{
 			this.MathMaster = mathMaster;
 		}
-
+		public void setValueOut(object value)
+		{
+			valueOut = value;
+		}
         public RuntimeMathObject setValueIn(MathObjectManager manager,params (string, List<OperatorScanInfo>)[] vars)
 		{
 			valueIn = (manager,vars);
@@ -959,13 +1167,15 @@ var r = solveLR(text, ois, infos, manager);
 		}
 		public override double getValue(params double[] ms)
 		{
-			var v =valueIn.HasValue? MathMaster(valueIn.Value.manager,valueIn.Value.vars):
-				MathMaster(null,null);
-			if(v is MethodObject)
+			var v =valueIn.HasValue? MathMaster(valueIn.Value.manager,this,valueIn.Value.vars):
+				MathMaster(null,this,null);
+		
+			var  vs=v.getValue(ms);	
+			if(afterRun!=null)
 			{
-				valueOut = ((MethodObject)v).value;
+				afterRun(this);
 			}
-			return v.getValue(ms);
+			return vs;
 		}
 	}
 	public class Operator : MathObject
@@ -979,6 +1189,58 @@ var r = solveLR(text, ois, infos, manager);
 			Operator1 = op;
 		}
 
+		public override MathObject AsRunCodeMode()
+		{
+			return new RuntimeMathObject((m,e, vs) =>
+			{
+				MathObject[] objects = new MathObject[A.Length];
+				for (int i = 0; i < A.Length; i++)
+				{
+					objects[i] = A[i];
+					if (A[i] is RuntimeMathObject)
+					{
+						A[i].AsRuntime().setValueIn(m, vs);
+					}
+					else if (A[i] is SourceObject)
+					{
+						int j = ((SourceObject)A[i]).index;
+						if (j >= 0 && j < vs.Length)
+						{
+							objects[j] = m.Run(vs[j].Item1);
+						}
+
+					}
+				}
+
+				return new Operator(Operator1, objects);
+			});
+		}
+		public override RuntimeMathObject AsRuntimeOrWraped()
+		{
+			return new RuntimeMathObject((m,e, vs) =>
+			{
+				MathObject[] objects=new MathObject[A.Length];
+				for(int i = 0; i <A.Length;i++)
+				{
+					objects[i] = A[i];
+					if (A[i] is RuntimeMathObject)
+					{
+						A[i].AsRuntime().setValueIn(m, vs);
+					}
+					else if (A[i] is SourceObject)
+					{
+						int j = ((SourceObject)A[i]).index;
+						if(j>=0&&j<vs.Length)
+						{
+							objects[j] = m.Run(vs[j].Item1);
+						}
+
+					}
+				}
+
+				return new Operator(Operator1,objects);
+			});
+		}
 		double[] getValues(double[] input)
 		{
 			double[] doubles= new double[A.Length];
@@ -990,9 +1252,13 @@ var r = solveLR(text, ois, infos, manager);
 		}
 		public override double getValue(params double[] inputValues)
 		{
+			if(Operator1 is null)
+			{
+				return double.NaN;
+			}
 			if (A is null )
 			{
-				return  double.NaN ;
+				return  Operator1(inputValues) ;
 			}
 
 			return  Operator1(getValues(inputValues)) ;
