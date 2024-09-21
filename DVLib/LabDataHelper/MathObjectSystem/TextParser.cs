@@ -555,7 +555,8 @@ namespace DVLib.LabDataHelper
             bool hasCode=false;
             text=formalizeCode(text);
             ReadOnlySpan<char> text_ = text.AsSpan();
-			int level=0;
+        
+            int level=0;
             ScanInfo<T,InfoT,M> osi;
             char c;
             HeadCharSet<T,InfoT,M> hs;
