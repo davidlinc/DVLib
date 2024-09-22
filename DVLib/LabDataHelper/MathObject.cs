@@ -87,6 +87,7 @@ namespace DVLib.LabDataHelper
 				(double[] data) => { if (data.Length == 1) return -data[0]; return data[0] - data[1]; }
 				));
 			register(new OperatorInfo("if", OperatorType.RUNCODE, max ,error.getValue,IF));
+			register(new OperatorInfo("else", OperatorType.RUNCODE, max-1, error.getValue, ELSE));
 			register(new OperatorInfo("return", OperatorType.RUNCODE, 2, error.getValue, RETURN));
 			register(new OperatorInfo("{", OperatorType.RUNCODE, max+1, error.getValue, CODEBLOCK));
 			register(new OperatorInfo("/", OperatorType.LeftRight, max-2, (a, b) => { return a / b; }));
@@ -297,11 +298,33 @@ namespace DVLib.LabDataHelper
 						vm.AsRuntime().setValueIn(manager, v);
 					}
 				}
-				return new Operator((d) => { return mathObjects.Length; }, mathObjects);
+				return new Operator((d) => { if(d.Length>0) return d[d.Length-1]; return 0; }, mathObjects);
 			});
 
 		}
 
+		static MathObject ELSE(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
+		{
+			var v=OperatorInfo.solveLR(text, ois, infos, manager);
+
+			MathObject M1 = manager.Run(v[0].name);
+			MathObject M2 = manager.Run(v[1].name);
+			return new RuntimeMathObject((a,b,c) => {
+
+			if(M1.isRuntime)
+				{
+					M1.AsRuntime().setValueIn(manager, c);
+
+				}
+			if(M2.isRuntime)
+				{
+					M2.AsRuntime().setValueIn(manager, c);
+				}
+
+				return new Else(M1, M2,b);
+
+			});
+		}
 
 		static MathObject IF(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
@@ -311,6 +334,7 @@ namespace DVLib.LabDataHelper
 			}
 
 			var v = OperatorInfo.solveCodeBlock(text, ois, infos, manager);
+
 
 			if (v.vars.Length > 0)
 			{
@@ -352,7 +376,8 @@ namespace DVLib.LabDataHelper
 									((RuntimeMathObject)vr).setValueIn(m, vs);
 
 								}
-								return vr.getValue(d);
+							e.setValueOut(true);
+							return vr.getValue(d);
 							}
 						}
 						return 0;
@@ -1114,7 +1139,10 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 
 	public abstract class MathObject
 	{
-		internal bool isRuntime=false;
+		internal bool isRuntime
+		{
+			get { return this is RuntimeMathObject; }
+		}
 
 		public RuntimeMathObject AsRuntime()
 		{
@@ -1144,6 +1172,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 	{
 		MathMaster MathMaster;
 		public object valueOut { get;internal set; }
+
 		public (MathObjectManager manager,  (string, List<OperatorScanInfo>)[] vars)? valueIn { get; internal set; }
 
 		AfterRun<RuntimeMathObject> afterRun;
@@ -1178,6 +1207,51 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			return vs;
 		}
 	}
+
+	public class Else : MathObject
+	{
+		MathObject If;
+		MathObject ELse;
+		RuntimeMathObject shell;
+		public Else(MathObject If, MathObject ELse,RuntimeMathObject shell)
+		{
+			this .If = If;
+			this .ELse = ELse;
+			this.shell = shell;
+		}
+		public override double getValue(params double[] ms)
+		{
+
+			double d= If.getValue(ms);
+			bool c = true;
+			if(If.isRuntime&& If.AsRuntime().valueOut is bool)
+			{
+				bool b=(bool)If.AsRuntime().valueOut;
+				if(b)
+				{
+					c = false;
+					shell.setValueOut(true);
+				}
+			}
+			if(c)
+			{
+
+			double d2= ELse.getValue(ms);
+				if (ELse.isRuntime&&ELse.AsRuntime().valueOut is bool)
+				{
+					bool b = (bool)If.AsRuntime().valueOut;
+					if (b)
+					{
+						shell.setValueOut(true);
+					}
+				}
+				return d2;
+			}
+			return d;
+
+		}
+	}
+
 	public class Operator : MathObject
 	{
 		MathObject[] A;
