@@ -328,10 +328,7 @@ namespace DVLib.LabDataHelper
 
 		static MathObject IF(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
-			for (int i = 0; i < infos.Count; i++)
-			{
-				DVOS.writeLine(infos[i].operatorInfo.mark + ":" + infos[i].position);
-			}
+		
 
 			var v = OperatorInfo.solveCodeBlock(text, ois, infos, manager);
 
@@ -341,9 +338,7 @@ namespace DVLib.LabDataHelper
 				MathObject[] objects = new MathObject[v.vars.Length];
 				for (int i = 0; i < v.vars.Length; i++)
 				{
-					DVOS.writeLine(v.vars[i].name);
 					foreach(var vm in v.vars[i].infos)
-					DVOS.writeLine(vm.operatorInfo.mark+":"+vm.position);
 					objects[i] = manager.Run(v.vars[i].name);
 				}
 				MathObject vr = null;
@@ -689,8 +684,6 @@ namespace DVLib.LabDataHelper
 
 		static (string, List<OperatorScanInfo> infos)[] updatePms(MathObject[] mathObjects, (string, List<OperatorScanInfo>)[] r, (string, List<OperatorScanInfo>)[] vs,int funcSize,MathObjectManager m)
 		{
-
-
 			(string, List<OperatorScanInfo> infos)[] nr = new (string, List<OperatorScanInfo> infos)[funcSize];
 			for (int i = 0; i < funcSize; i++)
 			{
@@ -702,6 +695,8 @@ namespace DVLib.LabDataHelper
 		{
 			register(name, OperatorType.Func, max, op, (string code, OperatorScanInfo selected, List<OperatorScanInfo> infos, MathObjectManager manager) => {
 				var r = OperatorInfo.solveFunc(code, selected, infos, manager);
+				
+
 				int funcSize = r.Length;
 				MathObject[] mathObjects = new MathObject[funcSize];
 				int id = 0;
@@ -737,6 +732,7 @@ namespace DVLib.LabDataHelper
 			
 			List<OperatorScanInfo> info = new List<OperatorScanInfo>();
 			var r = ScanForOperators(ref text, info);
+	
 			if(r.containsType(OperatorType.RUNCODE))
 			{
 				runCodeMode++;
@@ -745,6 +741,7 @@ namespace DVLib.LabDataHelper
 
 				return go;
 			}
+
 			return GetObject(text, info);
 		}
 	
