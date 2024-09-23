@@ -97,6 +97,9 @@ namespace DVLib.LabDataHelper
 				).setReverse());
 			register(new OperatorInfo("-", OperatorType.LeftRightOrRight, max-3,
 				(double[] data) => { if (data.Length == 1) return -data[0]; return data[0] - data[1]; }
+				)); 
+			register(new OperatorInfo("--", OperatorType.LeftRightOrRight, max - 3,
+				(double[] data) => { if (data.Length == 1) return data[0]; return data[0] +data[1]; }
 				));
 			register(new OperatorInfo("if", OperatorType.RUNCODE, max ,error.getValue,IF));
 			register(new OperatorInfo("else", OperatorType.RUNCODE, max-1, error.getValue, ELSE));
@@ -312,6 +315,7 @@ namespace DVLib.LabDataHelper
                 {
 					s= updatePms(ss_[i], v, manager);
 					mathObjects[i] = manager.GetObject(s.Item1,s.Item2);
+					DVOS.writeLine(s.Item1);
                 }
 
 
@@ -333,6 +337,7 @@ namespace DVLib.LabDataHelper
 
 			MathObject M1 = manager.Run(v[0].name);
 			MathObject M2 = manager.Run(v[1].name);
+			DVOS.writeLine(v[1].name);
 			return new RuntimeMathObject((a,b,c) => {
 
 			if(M1.isRuntime)
@@ -1274,11 +1279,16 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 					c = false;
 					shell.setValueOut(true);
 				}
+				else
+				{
+					shell.setValueOut(false);
+				}
 			}
 			if(c)
 			{
 
 			double d2= ELse.getValue(ms);
+				shell.setValueOut(true);
 				if (ELse.isRuntime&&ELse.AsRuntime().valueOut is bool)
 				{
 					bool b = (bool)ELse.AsRuntime().valueOut;
@@ -1286,7 +1296,12 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 					{
 						shell.setValueOut(true);
 					}
+					else
+					{
+						shell.setValueOut(false);
+					}
 				}
+				DVOS.writeLine(d2);
 				return d2;
 			}
 			return d;
