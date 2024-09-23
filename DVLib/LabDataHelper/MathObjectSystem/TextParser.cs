@@ -33,7 +33,13 @@ namespace DVLib.LabDataHelper
         internal int level;
         public string tag { get; private set; }
         internal I operatorInfo;
-    }
+
+		internal ScanInfo<T, I, M> getCopy()
+		{
+			var n= new ScanInfo<T, I, M>(position,level,operatorInfo);
+            n.tag = tag; return n;
+		}
+	}
 
     public class LevelGetter
     {
@@ -485,7 +491,12 @@ namespace DVLib.LabDataHelper
         public virtual T  GetObject(string text, List<ScanInfo<T,InfoT,M>> infos)
         {
             int t = Helper.clean(ref text);
-            List<ScanInfo<T,InfoT,M >>[] plist = new List<ScanInfo<T,InfoT, M>>[maxPriority];
+            List<ScanInfo<T, InfoT, M>> infos_ = new List<ScanInfo<T, InfoT, M>>();
+            foreach (var info in infos) {
+                infos_.Add(info.getCopy());
+            }
+            infos = infos_;
+			List<ScanInfo<T,InfoT,M >>[] plist = new List<ScanInfo<T,InfoT, M>>[maxPriority];
             for (int i = 0; i < maxPriority; i++)
             {
                 plist[i] = new List<ScanInfo<T,InfoT,M>>();
