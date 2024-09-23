@@ -31,7 +31,7 @@ namespace DVLib.LabDataHelper
 
 	public class MathObjectManager:ObjectManager<MathObject,OperatorInfo,MathObjectManager>
 	{
-		 int max = 6;
+		 int max = 7;
 		Random random = new Random();
 		StringDictionary<(string, string)> toReplace = new StringDictionary<(string, string)>();
 		internal static MathObject error = new NumberObject(double.NaN);
@@ -80,6 +80,17 @@ namespace DVLib.LabDataHelper
 		{
 			
 			register(new OperatorInfo("+", OperatorType.LeftRight, max-4, Helper.toSourceOperator((a, b) => { return a + b; })));
+
+			register(new OperatorInfo("==", OperatorType.LeftRight, max - 5, Helper.toSourceOperator((a, b) => { return a==b?1:0; })));
+
+			register(new OperatorInfo(">=", OperatorType.LeftRight, max - 5, Helper.toSourceOperator((a, b) => { return a >= b ? 1 : 0; })));
+
+			register(new OperatorInfo("<=", OperatorType.LeftRight, max - 5, Helper.toSourceOperator((a, b) => { return a <= b ? 1 : 0; })));
+
+			register(new OperatorInfo(">", OperatorType.LeftRight, max - 5, Helper.toSourceOperator((a, b) => { return a > b ? 1 : 0; })));
+
+			register(new OperatorInfo("<", OperatorType.LeftRight, max - 5, Helper.toSourceOperator((a, b) => { return a < b ? 1 : 0; })));
+
 			register(";", OperatorType.RUNCODE, 0, Helper.toSourceOperator((a, b) => { return 0; }),OperatorInfo.RuntimeLR);
 			register(new OperatorInfo("=", OperatorType.LeftRight, 1, Helper.toSourceOperator((a, b) => { return 0; }),EQ	
 				).setReverse());
@@ -241,6 +252,7 @@ namespace DVLib.LabDataHelper
 		static MathObject CODEBLOCK(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
 		int end = text.AsSpan().findEnd('{', '}');
+			DVOS.writeLine(text);
 			string block=text.Substring(0, end+1);
 			List<int> pos = new List<int>();
 			string[] ss= block.Substring(1,end).cutZeroLevel(';', manager.levelGetter,pos);
@@ -286,7 +298,7 @@ namespace DVLib.LabDataHelper
 			{
 			
 				mathObjects[i] = manager.Run(ss[i]);
-				
+				DVOS.writeLine(ss[i]);
 			}
 
 			return new RuntimeMathObject((m,e,v) =>
@@ -298,7 +310,7 @@ namespace DVLib.LabDataHelper
 						vm.AsRuntime().setValueIn(manager, v);
 					}
 				}
-				return new Operator((d) => { if(d.Length>0) return d[d.Length-1]; return 0; }, mathObjects);
+				return new Operator((d) => { if(d.Length>0) return d[d.Length-1]; return -1; }, mathObjects);
 			});
 
 		}
@@ -354,29 +366,10 @@ namespace DVLib.LabDataHelper
 					for (int i = 0; i < v.vars.Length; i++)
 					{
 						objects2[i] = manager.Run(nr[i].Item1, false);
+					
 					}
 
-					return new Operator((d) =>
-					{
-
-						if (d.Length > 0)
-						{
-
-							if (d[d.Length - 1] > 0 && vr != null)
-							{
-
-								if (vr is RuntimeMathObject)
-								{
-
-									((RuntimeMathObject)vr).setValueIn(m, vs);
-
-								}
-							e.setValueOut(true);
-							return vr.getValue(d);
-							}
-						}
-						return 0;
-					}, objects2);
+					return new If(objects2,vr,e);
 				});
 			}
 
@@ -839,7 +832,7 @@ namespace DVLib.LabDataHelper
 			for (int i = 0;i<text.Length;i++)
 			{
 				c = chars[i];
-				if(c==knife&&l==0&&i-s>2)
+				if(c==knife&&l==0&&i-s>1)
 				{
 					list.Add(chars.Slice(s+1, i - s-1).ToString());
 					pos.Add(i);
@@ -1204,7 +1197,36 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			return vs;
 		}
 	}
+	public class If : MathObject
+	{
+		MathObject[] IF;
+		MathObject Code;
+		RuntimeMathObject shell;
+		public If(MathObject[] IF, MathObject Code, RuntimeMathObject shell)
+		{
+			this.IF = IF;
+			this.Code = Code;
+			this.shell = shell;
+		}
+		public override double getValue(params double[] ms)
+		{
 
+			double d = -1;
+			for(int i = 0;IF.Length > i;i++)
+			{
+			d = IF[i].getValue(ms);
+			}
+			if(d>0)
+			{
+				double d2=Code.getValue(ms);
+				shell.setValueOut(true);
+				return d2;
+			}
+			shell.setValueOut(false);
+			return double.NaN;
+
+		}
+	}
 	public class Else : MathObject
 	{
 		MathObject If;
@@ -1221,6 +1243,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 
 			double d= If.getValue(ms);
 			bool c = true;
+			shell.setValueOut(false);
 			if(If.isRuntime&& If.AsRuntime().valueOut is bool)
 			{
 				bool b=(bool)If.AsRuntime().valueOut;
@@ -1236,7 +1259,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			double d2= ELse.getValue(ms);
 				if (ELse.isRuntime&&ELse.AsRuntime().valueOut is bool)
 				{
-					bool b = (bool)If.AsRuntime().valueOut;
+					bool b = (bool)ELse.AsRuntime().valueOut;
 					if (b)
 					{
 						shell.setValueOut(true);
