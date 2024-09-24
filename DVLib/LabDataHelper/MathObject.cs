@@ -33,7 +33,7 @@ namespace DVLib.LabDataHelper
 
     public class MathObjectManager:ObjectManager<MathObject,OperatorInfo,MathObjectManager>
 	{
-		 int max = 7;
+		 int max = 8;
 		Random random = new Random();
 		StringDictionary<(string, string)> toReplace = new StringDictionary<(string, string)>();
 		internal static MathObject error = new NumberObject(double.NaN);
@@ -91,6 +91,10 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo(">", OperatorType.LeftRight, max - 5, Helper.toSourceOperator((a, b) => { return a > b ? 1 : 0; })));
 
 			register(new OperatorInfo("<", OperatorType.LeftRight, max - 5, Helper.toSourceOperator((a, b) => { return a < b ? 1 : 0; })));
+
+			register(new OperatorInfo("&&", OperatorType.LeftRight, max - 6, Helper.toSourceOperator((a, b) => { return (b>0&&a>0) ? 1 : 0; })));
+
+			register(new OperatorInfo("||", OperatorType.LeftRight, max - 6, Helper.toSourceOperator((a, b) => { return (b > 0 || a > 0) ? 1 : 0; })));
 
 			register(";", OperatorType.RUNCODE, 0, Helper.toSourceOperator((a, b) => { return 0; }),OperatorInfo.RuntimeLR);
 			register(new OperatorInfo("=", OperatorType.LeftRight, 1, Helper.toSourceOperator((a, b) => { return 0; }),EQ	
@@ -311,15 +315,10 @@ namespace DVLib.LabDataHelper
 					manager.ScanForOperators(ref ss[i], sl);
 					ss_[i] = (ss[i], sl);
 				}
-				ScanSet s;
                 for (int i = 0; i < ss.Length; i++)
                 {
 					mathObjects[i] = manager.GetObject(ss_[i].Item1, ss_[i].Item2);
-                }
-
-
-              
-				return new Operator((d) => { if(d.Length>0) return d[d.Length-1]; return -1; }, mathObjects);
+                }return new Operator((d) => { if(d.Length>0) return d[d.Length-1]; return -1; }, mathObjects);
 			});
 
 		}
@@ -357,7 +356,6 @@ namespace DVLib.LabDataHelper
 						foreach (var vm in v.vars[i].infos)
 							objects[i] = manager.Run(v.vars[i].name);
 					}
-					MathObject vr = null;
 					string nameCode = "";
 					List<OperatorScanInfo> scanCode = new List<OperatorScanInfo>();
 					if (v.code.HasValue)
@@ -655,7 +653,6 @@ namespace DVLib.LabDataHelper
 					var r = ObjectInfo<MathObject, OperatorInfo, MathObjectManager>.solveFunc(code, selected, infos, manager);
 					int funcSize = r.Length;
 					MathObject[] mathObjects = new MathObject[funcSize];
-					int id = 0;
 					for (int i = 0; i < funcSize; i++)
 					{
 						mathObjects[i] = manager.GetObject(r[i].name, r[i].infos);
@@ -779,7 +776,6 @@ namespace DVLib.LabDataHelper
 			int leftParentheses = 0;
 			int rightParentheses = 0;
 			int level;
-			OperatorScanInfo osi;
 			for (int i = 0; i < text_.Length; i++)
 			{
 				if (text_[i] == '(')
@@ -1068,7 +1064,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			var r=solveFunc(text, ois, infos, manager);
 			int funcSize = r.Length;
 			MathObject[] mathObjects = new MathObject[funcSize];			
-			int id = 0;
+			
 			for (int i = 0; i < funcSize; i++)
 			{
 					mathObjects[i] = manager.GetObject(r[i].name, r[i].infos);

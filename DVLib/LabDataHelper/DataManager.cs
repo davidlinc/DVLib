@@ -20,7 +20,7 @@ namespace DVLib.LabDataHelper
 		public string describe{ get { return text; } set { text = value;OnChnage(null, EventType.ChangeText); } }
 		List<DataSet> dataSets=new List<DataSet>();
 		public int Count { get { return dataSets.Count; } }
-		public event DataSetEventHandler OnChnage;
+		public event DataSetEventHandler OnChnage=(a,b)=> { };
 
 		public DataManager(string name,string des="")
 		{
@@ -53,6 +53,22 @@ namespace DVLib.LabDataHelper
 			if(aloud)
 			OnChnage(dataSets[index],EventType.ChangeValue);
 
+		}
+		public void delete(int start,int count)
+		{
+			List<DataSet> doubles=new List<DataSet>();
+			for(int i=0;i<dataSets.Count;i++)
+			{
+				if(i>=start&&i<start+count)
+				{
+
+				}
+				else
+				{
+					doubles.Add(dataSets[i]);
+				}
+			}
+			dataSets = doubles;
 		}
 		public void removeValue(int index, int index2,bool aloud=true)
 		{
