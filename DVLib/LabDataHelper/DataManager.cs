@@ -111,7 +111,7 @@ namespace DVLib.LabDataHelper
 
 			return r;
 		}
-		public double[] getDataFromDescribe(int length,DataConverter converter=null)
+		public double[] getDataFromDescribe(int length,DataConverter converter=null,bool refZero=true)
 		{
 			if(converter==null)
 			{
@@ -120,11 +120,17 @@ namespace DVLib.LabDataHelper
 
 			length=Math.Min(Count, length);
 			double[] doubles = new double[length];
+			double rz = 0;
+			if(refZero)
+			{
+				rz = double.Parse(dataSets[0].describe);
+
+            }
 			for(int i = 0; i < length; i++)
 			{
 				try
 				{
-					doubles[i] =converter( double.Parse(dataSets[i].describe));
+					doubles[i] =converter( double.Parse(dataSets[i].describe)-rz);
 				}
 				catch
 				{
