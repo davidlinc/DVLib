@@ -1242,10 +1242,10 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 
 		int findIndexStart(double x)
 		{
-			int i = (int)((x - refData) / dData);
+			double i = ((x - refData) / dData);
 			if(i>=0&&i<vector2sMap.Length)
 			{
-				return vector2sMap[i];
+				return vector2sMap[(int)i];
 			}
 			else if(i<0)
 			{
