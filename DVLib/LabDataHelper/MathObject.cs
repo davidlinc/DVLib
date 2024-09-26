@@ -640,9 +640,12 @@ namespace DVLib.LabDataHelper
 			ScanForOperators(ref t, infos);
 			return (t, infos);
 		}
+		public void registerFunc(string name, MathObject mathObject, string tag = "customize")
+		{ 
+		register(new OperatorInfo(name,OperatorType.Func,max,mathObject.getValue,null,tag));
+		}
 
-
-		public void registerFunc(string name,ScanSet mathObject,string tag="customize")
+			public void registerFunc(string name,ScanSet mathObject,string tag="customize")
 		{
 
 			MathObject m = GetObject(mathObject.Item1, mathObject.Item2);
@@ -1136,7 +1139,125 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		public abstract double getValue(params double[] ms);
 	}
 
-	
+	public class LinearMap : MathObject
+	{
+		List<Vector2> RawData = new List<Vector2>();
+		int[] vector2sMap;
+		double refData;
+		int dData;
+		bool created = false;
+		int Size;
+		public LinearMap( int size)
+		{
+			this.Size = size;
+		}
+
+		public override double getValue(params double[] ms)
+		{
+			if(RawData.Count<2)
+			{
+				return double.NaN;
+			}
+			if(!created)
+			{
+				CreateMap(Size);
+			}
+			double v = ms[0];
+			int i = findIndexStart(v);
+			int max = RawData.Count - 1;
+			if(i<0)
+			{
+				return ip(v, RawData[0], RawData[1]);
+			}
+			else if(i<max)
+			{
+				Vector2 p1;
+				Vector2 p2;
+				for(int j=i;j<max;j++)
+				{
+					p1= RawData[j];
+					p2= RawData[j+1];
+					if (p1.X <= v && p2.X >v)
+					{
+						return ip(v,p1, p2);
+					}
+				}
+			}
+
+			return ip(v, RawData[RawData.Count - 1], RawData[RawData.Count - 2]);
+
+		}
+
+		public LinearMap Clear()
+		{
+			RawData.Clear();
+			created = false;
+			return this;
+		}
+		public LinearMap Add(params Vector2[] data )
+		{
+			foreach(Vector2 p in data)
+			{
+				RawData.Add(p);
+			}
+			created = false;
+			return this;
+		}
+
+		double ip(double x,Vector2 p1,Vector2 p2)
+		{
+			return p1.Y + (x -p1.X) / (p2.X -p1.X) * (p2.Y -p1.Y);
+
+		}
+		public void CreateMap(int AreaSize)
+		{
+			if(RawData.Count<2)
+				return;
+
+			var data = (from Vector2 d in RawData orderby d.X ascending select d).ToArray();
+			RawData.Clear();
+			foreach(var d in data)
+			{
+				RawData.Add(d);
+			}
+			int count = RawData.Count / AreaSize;refData = RawData[0].X;
+			dData =(int) ((RawData.Last().X -refData)/count);
+			double min =refData+dData;
+			
+			List<int> list = new List<int>
+			{
+				0
+			};
+			for(int i=1;i<RawData.Count;i++)
+			{
+				if (RawData[i].X  >= min && RawData[i-1].X<=min)
+				{
+					list.Add(i-1);
+					min += dData;
+				}
+			}
+			vector2sMap = list.ToArray();
+			created= true;
+		}
+
+		int findIndexStart(double x)
+		{
+			int i = (int)((x - refData) / dData);
+			if(i>=0&&i<vector2sMap.Length)
+			{
+				return vector2sMap[i];
+			}
+			else if(i<0)
+			{
+				return -1;
+			}
+			else
+			{
+				return RawData.Count;
+			}
+		}
+	}
+
 	public class RuntimeMathObject:MathObject
 	{
 		MathMaster MathMaster;
