@@ -111,6 +111,16 @@ namespace DVLib.LabDataHelper
 
 			return r;
 		}
+		public void orderByDescribe()
+		{
+			var v = from var in dataSets orderby double.Parse(var.describe) ascending select var;
+			dataSets = v.ToList();
+			for(int i = 0;i<Count;i++)
+			{
+				this[i].name = i + "";
+			}
+
+		}
 		public double[] getDataFromDescribe(int length,DataConverter converter=null,bool refZero=true)
 		{
 			if(converter==null)
