@@ -2546,6 +2546,10 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			});
 			return bitmap;
 		}
+   
+
+
+
 		public static implicit operator Image<Argb32>(bitmap bitmap)
 		{
 			Image<Argb32> image = new Image<Argb32>(bitmap.Width, bitmap.Height);
