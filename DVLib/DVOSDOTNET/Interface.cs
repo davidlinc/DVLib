@@ -18,6 +18,28 @@ namespace DVOSLib
 				 stringWriter(s.ToString() + "\n");
 			}
 		}
+		static StringBuilder sb=new StringBuilder();
+		public static void outPut(object s)
+		{
+			if (stringWriter != null)
+			{
+				if(s is System.Collections.IEnumerable)
+				{
+					sb.Clear();
+					foreach(var  v in (System.Collections.IEnumerable)s)
+					{
+						sb.Append(v.ToString() + "\n");
+
+					}
+					stringWriter(sb.ToString() + "\n");
+				}
+				else
+				{
+
+					stringWriter(s.ToString() + "\n");
+				}
+			}
+		}
 	}
 public	delegate void WriteString(string s);
 

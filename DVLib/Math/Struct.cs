@@ -712,25 +712,26 @@ for (int i = 0; i < ll; i++)
 
 	public T[] GetColumn(int index)
 	{
-		T[] ret = new T[Height];
-		for (int i = 0; i < Height; i++)
-		{
-			ret[i] = this[index, i];
+
+			return getRowSpan(index).ToArray();
 		}
-		return ret;
-	}
 	public int SetColumn(int index, T[] src)
 	{
-		for (int i = 0; i < src.Length; i++)
-		{
-			this[index, i] = (i < src.Length) ? src[i] : default(T);
-		}
-		return 0;
+
+			var a = getRowSpan(index);
+			Span<T> span = src;
+			span.CopyTo(a);
+			return 0;
 	}
 	//获取行和列
 	public T[] GetRow(int index)
 	{
-		return getRowSpan(index).ToArray();
+			T[] ret = new T[Width];
+			for (int i = 0; i < Width; i++)
+			{
+				ret[i] = this[i, index];
+			}
+			return ret;
 	}
 
 	public static Map<T> operator &(Map<T> map, MathFunction<T> function)
@@ -757,10 +758,12 @@ for (int i = 0; i < ll; i++)
 	}
 	public int SetRow(int index, T[] src)
 	{
-			var a=getRowSpan(index);
-			Span<T> span = src;
-			span.CopyTo(a);
-		return 0;
+			int min = Math.Min(Width, src.Length);
+			for (int i = 0; i < min; i++)
+			{
+				this[i, index] = src[i];
+			}
+			return 0;
 	}
 }
 

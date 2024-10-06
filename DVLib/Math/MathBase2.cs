@@ -7,8 +7,13 @@ using DVOSLib;
 using NewPhysics;
 using Images;
 using System.Xml;
+using System.Runtime.Intrinsics;
 using System.Reflection;
 using System.IO;
+using System.Numerics;
+using System.Runtime.Intrinsics.X86;
+using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace MathBase
 {
@@ -39,8 +44,13 @@ namespace MathBase
             this.realPart = r;
             this.imaginaryPart = i;
         }
-  
-        public static Complex operator +(Complex a, Complex b)
+		public Complex
+		   (Complex raw)
+		{
+			this.realPart = raw.realPart;
+			this.imaginaryPart = raw.imaginaryPart;
+		}
+		public static Complex operator +(Complex a, Complex b)
         {
             return new Complex(a.realPart + b.realPart, a.imaginaryPart + b.imaginaryPart);
         }
@@ -80,9 +90,74 @@ namespace MathBase
             return new Complex(realPart * b.realPart - imaginaryPart * b.imaginaryPart, realPart * b.imaginaryPart + imaginaryPart * b.realPart)
        ;
         }
-        public static Complex operator *(Complex a, Complex b)
+
+		static Vector256<double>  mask = Vector256.Create(0.0, -0.0, 0.0, -0.0);
+        public unsafe Complex mul2(Complex b)
         {
-            return new Complex(a.realPart * b.realPart - a.imaginaryPart * b.imaginaryPart, a.realPart * b.imaginaryPart + a.imaginaryPart * b.realPart);
+			var M1 = Vector256.Create(realPart,imaginaryPart,b.realPart,b.imaginaryPart);
+			var M2 = Avx2.Permute4x64(M1, 0b11101110);
+		    M1 = Avx2.Permute4x64(M1, 0b01000100);
+			var M3 = Avx.Multiply(Avx.Xor(M1, mask), M2);
+			var M4 = Avx.Multiply(M1, Avx2.Permute4x64(M2, 0b10110001));
+            M1 = Avx.HorizontalAdd(M3, M4);
+			return Unsafe.Read<Complex>(&M1);
+		}
+    
+
+		public unsafe static Complex[] mul2(Complex[] a, Complex[] b)
+        {
+            Complex[] re = new Complex[a.Length];
+            int li = a.Length - 1;
+			fixed (Complex * a_=a,b_=b,re_=re)
+            {
+                var M1 = new Vector256<double>();
+                var M2 = new Vector256<double>();
+				var M3= new Vector256<double>();
+				var M4 = new Vector256<double>();
+                Vector256<double>* sre = (Vector256<double>*)re_;
+				Vector256<double>* sa = (Vector256<double>*)a_;
+				Vector256<double>* sb= (Vector256<double>*)b_;
+                Span<Vector256<double>> span = MemoryMarshal.Cast<Complex, Vector256<double>>(re);
+                Complex* c1 = (Complex*)&M1;
+                Complex* c2 = c1+1;
+				var mask= Vector256.Create(0.0,-0.0,0.0,-0.0);
+                int t = a.Length>>1;
+                int left = a.Length - (t<<1 );
+				for (int i = 0; i < t; i++)
+					{
+                    M1 = Avx.LoadVector256((double*)(sa + i));
+					M2 = Avx.LoadVector256((double*)(sb + i));
+                    M1 = Avx.HorizontalAdd(Avx.Multiply(Avx.Xor(M1, mask), M2), Avx.Multiply(M1, Avx2.Permute4x64(M2, 0b10110001)));
+                    span[i] = M1;
+					//Avx.Store((double*)(sre + i),M1);
+				}
+                if(left>0)
+                {
+                    re[li] = a[li] * b[li];
+                }
+            }
+          
+            return re;
+        }
+        public static Complex test;
+		public static Vector256<double> test2;
+		public unsafe static Complex[] mul(Complex[] a, Complex[] b)
+		{
+			Complex[] re = new Complex[a.Length];
+
+            for (int i = 0; i < a.Length; i++)
+            {
+                re[i]= a[i]*b[i];
+            }
+
+            return re;
+		}
+
+		public static Complex operator *(Complex a, Complex b)
+        {
+
+
+          return new Complex(a.realPart * b.realPart - a.imaginaryPart * b.imaginaryPart, a.realPart * b.imaginaryPart + a.imaginaryPart * b.realPart);
         }
         public Complex scale(double f)
         {
