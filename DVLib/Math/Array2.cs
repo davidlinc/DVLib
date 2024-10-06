@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace MathBase
 {
-	public delegate void Array2Operator<T>(int x, int y, T value, Array2<T> data);
+	public unsafe delegate void Array2Operator<T>(int y, T* value);
 	public unsafe struct Array2<T>:IDisposable,IList<T>
 	{
 		public T* intp { get;private set; }
@@ -22,12 +22,10 @@ namespace MathBase
 
 		public T this[int index] { get => intp[index]; set =>intp[index]=value; }
 
-		internal int* MapIndex;
 		
-		Array2(int width,int height,int length,T* intp,int* map)
+		Array2(int width,int height,int length,T* intp)
 		{
 			this.intp = intp;
-			MapIndex = map;
 			Width = width;
 			Height = height;
 			Length = length;
@@ -37,37 +35,49 @@ namespace MathBase
 			this.Width = width;
 			this.Height = height;
 			this.Length = height * width;
-
 			intp = (T*)Marshal.AllocHGlobal(Length * Marshal.SizeOf(typeof(T)));
-			MapIndex= (int*)Marshal.AllocHGlobal(Height * Marshal.SizeOf(typeof(int)));
 			int index = 0;
-			for(int i = 0; i < height;i++)
+		}
+
+		public unsafe void RTC(Array2<T> r)
+		{
+			T* p = r.intp;
+			T*  t=intp;
+			T* d;
+			int h = Height;
+			int w=Width;
+				for (int j = 0; j <h; j++)
 			{
-				MapIndex[i] = index;
-				index += width;
+				d = p + j;
+				for (int i = 0; i < w; i++)
+			{
+					*d = *t;
+					t++;
+					d += h;
+				}
 			}
 		}
 
 		public Array2<T> Foreach(Array2Operator<T> array2Operator)
 		{
-			int* mi=stackalloc int[Height];
-			Array2<T> a2 = new Array2<T>(Width,Height,Length,intp,MapIndex);
+			//int* mi=stackalloc int[Height];
+			Array2<T> a2 = new Array2<T>(Width,Height,Length,intp);
 			int size = sizeof(int) * Height;
-			Buffer.MemoryCopy(MapIndex,mi,size,size);
+			//Buffer.MemoryCopy(MapIndex,mi,size,size);
 			int i = 0;
-			for(int y= 0; y < Height;y++)
-			for(int x=0;x<Width;x++)
+
+			for(int y=0;y<Height;y++)
 			{
-					array2Operator(x, y, intp[i],a2 );
-					i++;
+					array2Operator(y, intp+i);
+				i += Width;
 			}
 			return this;
 		}
 		
 		public T this[int x,int y]
 		{
-			get { return intp[x + MapIndex[y]]; }
-			set { intp[x + MapIndex[y]] = value; }
+			get { return intp[x + Width * y]; }
+			set { intp[x + Width * y] = value; }
 		}
 
 		public void Dispose()

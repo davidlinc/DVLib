@@ -7,7 +7,10 @@ using DVOSLib;
 using MathBase;
 using Images;
 using MachineLearning;
-
+using System.Runtime.InteropServices;
+using System.Numerics;
+using System.Runtime.Intrinsics.X86;
+using System.Runtime.Intrinsics;
 
 namespace MathBase
 {
@@ -59,14 +62,74 @@ namespace MathBase
 		{
 			int w = map.Width;
 			int h = map.Height;
-			return fft_2D_core(map,ref w,ref h, 1);
+
+			ComplexMap r=new ComplexMap(w,h);
+			for(int i=0;i<w;i++)
+			{
+				r.SetColumn(i,map.GetColumn(i).FFT());
+			}
+			for (int i = 0; i < h; i++)
+			{
+				r.SetRow(i, r.GetRow(i).FFT());
+			}
+
+			return r;
 		}
 
+		public unsafe static double MultiplyM(double[] nums)
+		{
+			int vectorSize = Vector<double>.Count;
+			var accVector = Vector256.Create(1.0,1,1,1);
+			int i;
+			var array = nums;
+			double result = 1.0d;
+			fixed (double* p = array)
+			{
+				for (i = 0; i <= array.Length - vectorSize; i += vectorSize)
+				{
+					//var v = new Vector<double>(array, i);
+					var v = *(Vector256<double>*)(p + i);
+					accVector =Avx.Multiply(accVector, v);
+				}
+			}
+			var tempArray = new double[Vector<double>.Count];
+			Span<Vector256<double>> t =MemoryMarshal.Cast<double,Vector256<double>>( tempArray.AsSpan());
+			t[0] = accVector;
+			for (int j = 0; j < tempArray.Length; j++)
+			{
+				result = result * tempArray[j];
+			}
+
+			for (; i < array.Length; i++)
+			{
+				result *= array[i];
+			}
+
+			return result;
+		}
+		public static double MultiplyN(double[] nums)
+		{
+			double result = 1.0d;
+
+			for (int i = 0; i < nums.Length; i++)
+			{
+				result *= nums[i];
+			}
+			return result;
+		}
 		public static ComplexMap iFFT(this ComplexMap map)
 		{
 			int w = map.Width;
-			int h = map.Height;
-			return fft_2D_core(map, ref w, ref h, -1);
+			int h = map.Height; ComplexMap r = new ComplexMap(w, h);
+			for (int i = 0; i < w; i++)
+			{
+				r.SetColumn(i, map.GetColumn(i).iFFT());
+			}
+			for (int i = 0; i < h; i++)
+			{
+				r.SetRow(i, r.GetRow(i).iFFT());
+			}
+			return r;
 		}
 
 		public static Complex[] dft(this Complex[] data)
@@ -132,7 +195,11 @@ namespace MathBase
 		public static Complex[] FFT(this Complex[] map)
 		{
 			int l = map.Length;
+
+			if(l.BitCount()==1)
 			return fft_core(map,ref l, 1);
+
+			return BluesteinFFT(map);
 		}
 
 		public static Complex[] fftShift(this Complex[]map)
@@ -211,10 +278,24 @@ namespace MathBase
 
 			return r;
 		}
+		public static int BitCount(this byte b)
+		{
+			return (1 & b) + (1 & (b >> 1)) + (1 & (b >> 2)) + (1 & (b >> 3)) + (1 & (b >> 4)) + (1 & (b >> 5)) + (1 & (b >> 6)) + (1 & (b >> 7));
+		}
+		public unsafe static int BitCount(this int b)
+		{
+			var bp = (byte*)&b;
+			return BitCount(bp[0])+ BitCount(bp[1])+ BitCount(bp[2]) + BitCount(bp[3]);
+		}
 		public static Complex[] iFFT(this Complex[] map)
 		{
+			
 			int l = map.Length;
+			
+			if(l.BitCount()==1)
 			return fft_core(map, ref l, -1);
+
+			return BluesteinFFT(map,-1);
 		}
 		/// <summary>
 		/// 二维快速傅里叶变换和反变换的核心函数通过两次一维fft实现
@@ -564,6 +645,97 @@ namespace MathBase
 			}
 		}
 
+		static Complex[] Chirp(int N)
+		{
+			Complex[] complexes = new Complex[N];
+			double n1 =-Math.PI / N;
+			double angle;
+			double angle0 = 0;
+			for (int i = 0;i < N;i++)
+			{
+				angle = angle0 * i;
+				complexes[i] = new Complex(Math.Cos(angle), Math.Sin(angle));
+				angle0 += n1;
+			}
+			return complexes;
+		}
+		static Dictionary<int, Complex[]> Chirps = new();
+		public static Complex[] getChirp(int n)
+		{
+			if(Chirps.TryGetValue(n, out Complex[] complexes))
+			{
+				return complexes;
+			}
+			else
+			{
+				var v=Chirp(n);
+				Chirps.Add(n, v);
+				return v;
+			}
+		}
+		public static Complex[] BluesteinFFT(this Complex[] input,int dir=1)
+		{
+            int N=input.Length;
+			int M =0x01<< ReLog2N(2 * N - 1);
+			Complex[] a=new Complex[M];
+			Complex[] b=new Complex[M]; 
+			Complex[] result = new Complex[N];
+			Complex[] chirp = getChirp(N);
+			if(dir<0)
+			{
+				Complex[] temp= new Complex[N];
+				var c = chirp.AsSpan();
+				c.CopyTo(temp);
+				var s=MemoryMarshal.Cast<Complex,double>( temp.AsSpan());
+				int NN = N * 2;
+				for(int i=1;i<NN;i+=2)
+				{
+					s[i] = -s[i];
+				}
+				chirp = temp;
+			}
+			int Nn=N-1;
+			int Mn=M-1;
+			// Chirp function: z_n = exp(πi * n^2 / N)
+			for (int n = 0; n < N; n++)
+			{
+				a[n] = input[n] * chirp[n];
+				
+				b[n] = chirp[n].conjugate();
+				if(n>0)
+				b[M-n] = chirp[n].conjugate();
+			}
+
+			int l = M;
+			// Compute FFT of a and b
+			Complex[] A =fft_core(a,ref l,1);
+			Complex[] B =fft_core(b, ref l, 1);
+
+			// Convolution in frequency domain
+			Complex[] C = new Complex[M];
+			for (int i = 0; i < M; i++)
+			{
+				C[i] = A[i] * B[i];
+			}
+
+			// Inverse FFT of the product
+			Complex[] convResult = fft_core(C,ref l,-1);
+
+			// Multiply result by chirp function and extract relevant part
+			for (int k = 0; k < N; k++)
+			{
+				result[k] = convResult[k] * chirp[k];
+			}
+			if(dir<0)
+			{
+				double d = 1.0 / N;
+				for (int k = 0; k < N; k++)
+				{
+					result[k] *= d;
+				}
+			}
+			return result;
+		}
 		public static Complex[] getWN(int N,int flag)
 		{
 					int n = N / 2;
@@ -577,12 +749,10 @@ namespace MathBase
 			}
 			return WN;
 		}
-		public static Complex[] fft_core(this Complex[] src, ref int lenght, int flag,FFTData data=null)
+
+		public unsafe static Complex[] fft_core(this Complex[] src, ref int lenght, int flag,FFTData data=null)
 		{
             int relog2N = ReLog2N(lenght);
-			
-
-
 			if(data ==null)
 			{
 				data = getFFTData(relog2N, flag);
@@ -591,6 +761,7 @@ namespace MathBase
 
 			int bitlength = data.bitlength;
 			int[] Rag = data.Rag;
+	
 			Complex[] WN = data.WN;
 			
 			int N = 0x01 << bitlength;
@@ -606,9 +777,9 @@ namespace MathBase
 		
 			for (int i = 0; i < N; i++)
 			{
-				index = Rag[i];
+				
 			
-				Register[i] = dataSource[index] ;
+				Register[i] = dataSource[Rag[i]] ;
 			}
 
 			//蝶形运算
@@ -616,13 +787,10 @@ namespace MathBase
 			Complex temp;
 			int tempi,tempi2;
 			int tp1, tp2,tp3;
-			for (int steplenght = 2; steplenght <= N; steplenght=steplenght<<1)
+			for (int steplenght = 2; steplenght <= N; steplenght<<=1)
 			{
 				tempi = N / steplenght;
-				tempi2 = steplenght / 2;
-
-
-
+				tempi2 = steplenght >> 1;
 				tp1 = 0;
 				for (int step = 0; step < tempi; step++)
 				{

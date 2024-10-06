@@ -66,10 +66,8 @@ namespace Images
 			intP = map.intp;
 			width = map.Width;
 			height = map.Height;
-			IndexMap = map.MapIndex;
 		}
 		readonly int* intP;
-		readonly int* IndexMap;
 		readonly int width;
 		readonly int height;
 
@@ -78,11 +76,11 @@ namespace Images
 			
 			get
 			{
-				return ((Pixel*)(intP+ x + IndexMap[y]));
+				return ((Pixel*)(intP+ x + width *y));
 			}
 			set
 			{
-				*((Pixel*)(intP + x + IndexMap[y]))=*value; 
+				*((Pixel*)(intP + x + width*y))=*value; 
 			}
 		}
 		}

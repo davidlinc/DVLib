@@ -67,22 +67,22 @@ namespace Images
 		{
 			Bitmap = bitmap;
 		}
-		public void toBitmap(PixelAccessor<Argb32> a)
+		public void toBitmap(PixelAccessor<Bgra32> a)
 		{
 
 			for (int i = 0; i < a.Height; i++)
 			{
-				var s = MemoryMarshal.Cast<Argb32, int>(a.GetRowSpan(i));
+				var s = MemoryMarshal.Cast<Bgra32, int>(a.GetRowSpan(i));
 				var b = Bitmap.getRowSpan(i);
 				s.CopyTo(b);
 			}
 		}
-		public void toImage(PixelAccessor<Argb32> a)
+		public void toImage(PixelAccessor<Bgra32> a)
 		{
 
 			for (int i = 0; i < a.Height; i++)
 			{
-				var s = MemoryMarshal.Cast<Argb32, int>(a.GetRowSpan(i));
+				var s = MemoryMarshal.Cast<Bgra32, int>(a.GetRowSpan(i));
 			
 				var b = Bitmap.getRowSpan(i);
 				b.CopyTo(s);
@@ -240,7 +240,7 @@ namespace Images
 				((value >> 1) & d) | ((value >> 3) & c) | ((value >> 5) & b) | ((value >> 7) & a)) & 255);
 		}
 
-		public static bitmap fromImage(this Image<Argb32> image)
+		public static bitmap fromImage(this Image<Bgra32> image)
 		{
 			bitmap bitmap=new bitmap(image.Width, image.Height);
 			Converter converter = new Converter(bitmap);
@@ -2111,7 +2111,7 @@ new double[] { 1, 1}
 			FileStream s = new FileStream(path, FileMode.Create);
 			if(Bitcount==24)
 			{
-writeToStream(s);
+              writeToStream(s);
 			}
 			
 			s.Flush();
@@ -2165,7 +2165,7 @@ for (int j = (int)height - 1; j >= 0; j--)
 				for (int i = 0; i < width; i++)
 				{
 					stream.Read(temp, 0, 3);
-					temp[3] = 0;
+					temp[3] = 255;
 					C[i, j] = BitConverter.ToInt32(temp, 0);
 				}
 			}
@@ -2239,13 +2239,14 @@ for (int j = (int)height - 1; j >= 0; j--)
 
 			if(Bitcount==24)
 			{
-	for(int j=(int)height-1;j>=0;j--)
+				for (int i = (int)(width - 1); i >=0 ; i--)
+				{
+					for (int j=0;j<height;j++)
 			{
-for(int i=0;i<width;i++)
-			{
+            
 					byte[] color = BitConverter.GetBytes(C[i, j]);
 					stream.Write(color, 0, 3);
-				}
+			}
 			}
 			}	
 			else if(Bitcount==32)
@@ -2520,7 +2521,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			name = path;
 			try
 			{
-                Image<Argb32> image=Image.Load<Argb32>(path);
+                Image<Bgra32> image=Image.Load<Bgra32>(path);
 				if (image != null)
 				{
 					Width= image.Width;
@@ -2550,9 +2551,9 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 
 
 
-		public static implicit operator Image<Argb32>(bitmap bitmap)
+		public static implicit operator Image<Bgra32>(bitmap bitmap)
 		{
-			Image<Argb32> image = new Image<Argb32>(bitmap.Width, bitmap.Height);
+			Image<Bgra32> image = new Image<Bgra32>(bitmap.Width, bitmap.Height);
 			image.ProcessPixelRows(new Converter(bitmap).toImage);
 			return image;
 		}
