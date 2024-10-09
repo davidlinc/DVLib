@@ -18,7 +18,8 @@ using System.Runtime.Intrinsics.X86;
 namespace DVLib.LabDataHelper
 {
 
-	
+	public delegate double ThreeElementsOperator(double a, double b,double c);
+	public delegate double FourElementsOperator(double a, double b, double c,double d);
 	public delegate double TwoElementsOperator(double a,double b);
 	public delegate double OneElementOperator(double a);
 	public delegate double SourceOperator(params double[] doubles);
@@ -26,6 +27,7 @@ namespace DVLib.LabDataHelper
 	public delegate (object,SourceOperator) MethodFactory(MathObjectManager manager, params (string, List<OperatorScanInfo>)[] vars);
 	public delegate void OnReturn(object o);
 	public delegate void AfterRun<T>(T o);
+	public delegate MathObject DerivativeGetter(int index,params MathObject[] objects);
 
    
 
@@ -80,7 +82,7 @@ namespace DVLib.LabDataHelper
 		public override	void  registerDefault()
 		{
 			
-			register(new OperatorInfo("+", OperatorType.LeftRight, max-4, Helper.toSourceOperator((a, b) => { return a + b; })));
+			register(new OperatorInfo("+", OperatorType.LeftRight, max-4, Helper.toSourceOperator((a, b) => { return a + b; }), Helper.asFactory((i,m) => { return new Operator(Helper.toSourceOperator((x, y) => x + y), m[0].getDYDX(i), m[1].getDYDX(i)); }) ));
 
 			register(new OperatorInfo("==", OperatorType.LeftRight, max - 5, Helper.toSourceOperator((a, b) => { return a==b?1:0; })));
 
@@ -112,7 +114,7 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo("/", OperatorType.LeftRight, max-2, (a, b) => { return a / b; }));
 			register(new OperatorInfo("*", OperatorType.LeftRight, max-2, (a, b) => { return a * b; }));
 			register(new OperatorInfo("%", OperatorType.LeftRight, max-2, (a, b) => { return a % b; }));
-			register(new OperatorInfo("^", OperatorType.LeftRight, max-1, Math.Pow));
+			register(new OperatorInfo("^", OperatorType.LeftRight, max-1, Math.Pow,  Helper.asFactory((i, m) => { return new Operator(Helper.toSourceOperator((x, y,x_,y_) => x + y), m[0], m[1], m[0].getDYDX(i), m[1].getDYDX(i)); })));
 			register(new OperatorInfo("/-", OperatorType.LeftRight, max-2, (a, b) => { return a / -b; }));
 			register(new OperatorInfo("*-", OperatorType.LeftRight, max-2, (a, b) => { return a * -b; }));
 			register(new OperatorInfo("%-", OperatorType.LeftRight, max-2, (a, b) => { return a % -b; }));
@@ -766,9 +768,18 @@ namespace DVLib.LabDataHelper
 		{
 			return data => OperatorInfo((double)data[0]);
 		}
+
+		static internal Factory<MathObject,OperatorInfo,MathObjectManager> asFactory(this DerivativeGetter getter)
+		{
+			return OperatorInfo.getDerivableFunc(getter);
+		}
 		static internal SourceOperator toSourceOperator(this TwoElementsOperator OperatorInfo)
 		{
 			return data => OperatorInfo((double)data[0], (double)data[1]);
+		}
+		static internal SourceOperator toSourceOperator(this FourElementsOperator OperatorInfo)
+		{
+			return data => OperatorInfo((double)data[0], (double)data[1], data[2], data[3]);
 		}
 		public static List<int>  findDot(string s,char dot=',')
 		{
@@ -1062,7 +1073,11 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			return MathObjectManager.error;
 		}
 
-	static	MathObject Func(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
+   internal static Factory<MathObject,OperatorInfo,MathObjectManager> getDerivableFunc(DerivativeGetter d)
+		{
+			return (t, i, l, m) => { return (Func(t, i, l, m).setDerivativeGetter(d));  };
+		}
+	static	Operator Func(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager)
 		{
 			var r=solveFunc(text, ois, infos, manager);
 			int funcSize = r.Length;
@@ -1111,9 +1126,22 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 
 	public abstract class MathObject
 	{
+		class ERRORObject : MathObject
+		{
+			public override double getValue(params double[] ms)
+			{
+				return double.NaN;
+			}
+		}
+		internal static MathObject ERROR=new ERRORObject() ;
 		internal bool isRuntime
 		{
 			get { return this is RuntimeMathObject; }
+		}
+
+		public virtual MathObject getDYDX(int index=0)
+		{
+			return ERROR;
 		}
 
 		public RuntimeMathObject AsRuntime()
@@ -1379,15 +1407,27 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 	{
 		MathObject[] A;
 		SourceOperator Operator1;
+		
+		static DerivativeGetter defaultDerivative = delegate{ return MathObject.ERROR; };
 
+		DerivativeGetter getter;
+
+		
 		public Operator(SourceOperator op,params MathObject[] a)
 		{
 			A = a;
 			Operator1 = op;
 		}
+		public Operator setDerivativeGetter(DerivativeGetter getter)
+		{
+			this.getter = getter;
+			return this;
+		}
+		public override MathObject getDYDX(int index = 0)
+		{
+			return base.getDYDX(index);
+		}
 
-	
-	
 		double[] getValues(double[] input)
 		{
 			double[] doubles= new double[A.Length];
