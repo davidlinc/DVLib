@@ -10,14 +10,14 @@ using DVLib.LabDataHelper.MathObjectSystem;
 
 namespace DVLib.LabDataHelper
 {
-    public delegate  T  Factory<T,InfoT,ManagerT> (string text, ScanInfo<T,InfoT,ManagerT> scanInfo, List<ScanInfo< T,InfoT, ManagerT>> list,ManagerT Paser)where InfoT:ObjectInfo<T,InfoT,ManagerT>,new() where ManagerT:ObjectManager<T,InfoT,ManagerT>;
+    public delegate  T  Factory<T,InfoT,ManagerT> (string text, ScanInfo<T,InfoT,ManagerT> scanInfo, List<ScanInfo< T,InfoT, ManagerT>> list,ManagerT Paser,ScanResult result)where InfoT:ObjectInfo<T,InfoT,ManagerT>,new() where ManagerT:ObjectManager<T,InfoT,ManagerT>;
     public delegate bool OperatorInfoCondition<T, InfoT, M>(InfoT info) where InfoT : ObjectInfo<T, InfoT, M>, new() where M : ObjectManager<T, InfoT, M>;
 	public enum OperatorType
 	{
 		LeftRight, Left, Right, Func, Source, LeftRightOrRight,RUNCODE,RETURN
 	}
 
-
+   
 
 	public class ScanInfo<T,I,M>where I : ObjectInfo<T,I,M>,new()where M:ObjectManager<T,I,M>
     {
@@ -65,8 +65,22 @@ namespace DVLib.LabDataHelper
 
     public class ScanResult
     {
+
+
+
          HashSet<OperatorType> types=new HashSet<OperatorType>();
-        HashSet<string> names=new HashSet<string>();
+         HashSet<string> names=new HashSet<string>();
+        public readonly int id;
+        public ScanResult(int id)
+        {
+            this.id = id;
+        }
+
+        public bool isChanged(ChagedObject obj)
+        {
+            return obj.isChanged(id);
+        }
+      
 
         internal void add(OperatorType type)
         {
@@ -357,10 +371,12 @@ namespace DVLib.LabDataHelper
 
 
 	}
-	public class ObjectManager<T,InfoT,M>where InfoT:ObjectInfo<T,InfoT,M> ,new() where M:ObjectManager<T,InfoT,M>
+	public class ObjectManager<T,InfoT,M>:ChagedObject where InfoT:ObjectInfo<T,InfoT,M> ,new() where M:ObjectManager<T,InfoT,M>
     {
-        
-       public int maxPriority { get; private set; } = 0;
+
+     
+
+		public int maxPriority { get; private set; } = 0;
         static Dictionary<char, HeadCharSet<T,InfoT,M>> stringLic = new Dictionary<char, HeadCharSet<T, InfoT,M>>();
         bool canOver = true;
         public LevelGetter levelGetter { get; private set; } = new LevelGetter();
@@ -370,7 +386,9 @@ namespace DVLib.LabDataHelper
             registerLG(levelGetter);
             registerDefault();
         }
-   public InfoT register(InfoT info)
+
+	
+        public InfoT register(InfoT info)
         {
 
 
@@ -488,7 +506,7 @@ namespace DVLib.LabDataHelper
   
 
      
-        public virtual T  GetObject(string text, List<ScanInfo<T,InfoT,M>> infos)
+        public virtual T  GetObject(string text, List<ScanInfo<T,InfoT,M>> infos,ScanResult result)
         {
             int t = Helper.clean(ref text);
             List<ScanInfo<T, InfoT, M>> infos_ = new List<ScanInfo<T, InfoT, M>>();
@@ -534,7 +552,7 @@ namespace DVLib.LabDataHelper
             if (ois != null)
             {
 
-                var v = ois.operatorInfo.factory(text, ois, infos, (M)this);
+                var v = ois.operatorInfo.factory(text, ois, infos, (M)this,result);
                 return v;
             }
             else
@@ -562,7 +580,7 @@ namespace DVLib.LabDataHelper
         }
         public ScanResult ScanForOperators(ref string text, List<ScanInfo<T,InfoT,M>> list)
         {
-            ScanResult r = new ScanResult();
+            ScanResult r = new ScanResult(ID);
             bool hasCode=false;
             text=formalizeCode(text);
             ReadOnlySpan<char> text_ = text.AsSpan();
