@@ -14,7 +14,7 @@ namespace DVLib.LabDataHelper
     public delegate bool OperatorInfoCondition<T, InfoT, M>(InfoT info) where InfoT : ObjectInfo<T, InfoT, M>, new() where M : ObjectManager<T, InfoT, M>;
 	public enum OperatorType
 	{
-		LeftRight, Left, Right, Func, Source, LeftRightOrRight,RUNCODE,RETURN
+		LeftRight, Left, Right, Func, Source,Number, LeftRightOrRight,RUNCODE,RETURN
 	}
 
    
@@ -415,6 +415,11 @@ namespace DVLib.LabDataHelper
         {
 
         }
+
+        internal virtual void onCreated(T obj, InfoT info)
+        {
+
+        }
         public virtual void registerDefault()
         {
 
@@ -553,6 +558,7 @@ namespace DVLib.LabDataHelper
             {
 
                 var v = ois.operatorInfo.factory(text, ois, infos, (M)this,result);
+                onCreated(v, ois.operatorInfo);
                 return v;
             }
             else
