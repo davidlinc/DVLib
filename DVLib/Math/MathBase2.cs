@@ -155,8 +155,6 @@ namespace MathBase
 
 		public static Complex operator *(Complex a, Complex b)
         {
-
-
           return new Complex(a.realPart * b.realPart - a.imaginaryPart * b.imaginaryPart, a.realPart * b.imaginaryPart + a.imaginaryPart * b.realPart);
         }
         public Complex scale(double f)
