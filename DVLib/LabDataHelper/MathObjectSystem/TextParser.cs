@@ -415,6 +415,11 @@ namespace DVLib.LabDataHelper
         {
 
         }
+
+        internal virtual void onCreated(T obj, InfoT info)
+        {
+
+        }
         public virtual void registerDefault()
         {
 
@@ -553,6 +558,7 @@ namespace DVLib.LabDataHelper
             {
 
                 var v = ois.operatorInfo.factory(text, ois, infos, (M)this,result);
+                onCreated(v, ois.operatorInfo);
                 return v;
             }
             else

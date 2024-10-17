@@ -15,6 +15,8 @@ using ObjectFactory = DVLib.LabDataHelper.Factory<DVLib.LabDataHelper.MathObject
 using ScanSet = System.ValueTuple<string,System.Collections.Generic.List<DVLib.LabDataHelper.ScanInfo<DVLib.LabDataHelper.MathObject, DVLib.LabDataHelper.OperatorInfo, DVLib.LabDataHelper.MathObjectManager>>>;
 using DVLib.LabDataHelper.MathObjectSystem;
 using System.Runtime.Intrinsics.X86;
+using System.Xml;
+
 namespace DVLib.LabDataHelper
 {
 
@@ -83,6 +85,11 @@ namespace DVLib.LabDataHelper
 			funcReturnStack.TryPop(out OnReturn or);
 		}
 
+		internal override void onCreated(MathObject obj, OperatorInfo info)
+		{
+			//obj.setPmSize(info.pmSize);
+		}
+
 		public void returnObject(object o)
 		{
 	        if(funcReturnStack.TryPeek(out OnReturn r))
@@ -98,7 +105,23 @@ namespace DVLib.LabDataHelper
 		public override	void  registerDefault()
 		{
 			
-			register(new OperatorInfo("+", OperatorType.LeftRight, max-4, Helper.toSourceOperator((a, b) => { return a + b; }), Helper.asFactory((i,m) => { return new Operator(Helper.toSourceOperator((x, y) => x + y), m[0].getDYDX(i), m[1].getDYDX(i)); }) ));
+			register(new OperatorInfo("+", OperatorType.LeftRight, max-4, Helper.toSourceOperator((a, b) => { return a + b; }), (i, m) => {
+
+				return	CreateOperator("+", m[0].getDYDX(i), m[1].getDYDX(i));
+			}
+			));
+
+			register(new OperatorInfo("sum", OperatorType.LeftRight, max - 4, (double[] m) => { double sum = 0; foreach (var i in m) sum += i; return sum; }, (i, m) =>
+			{
+				MathObject[] ms = new MathObject[m.Length];
+				for(int j=0;j<m.Length;j++)
+				{
+					ms[j] = m[j].getDYDX(i);
+				}
+		return CreateOperator("sum",ms); }
+			
+			));
+
 
 			register(new OperatorInfo("==", OperatorType.LeftRight, max - 5, Helper.toSourceOperator((a, b) => { return a==b?1:0; })));
 
@@ -115,30 +138,74 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo("||", OperatorType.LeftRight, max - 6, Helper.toSourceOperator((a, b) => { return (b > 0 || a > 0) ? 1 : 0; })));
 
 			register(";", OperatorType.RUNCODE, 0, Helper.toSourceOperator((a, b) => { return 0; }),OperatorInfo.RuntimeLR);
-			register(new OperatorInfo("=", OperatorType.LeftRight, 1, Helper.toSourceOperator((a, b) => { return 0; }),EQ	
+			register(new OperatorInfo("=", OperatorType.LeftRight, 1, Helper.toSourceOperator((a, b) => { return 0; }),null,EQ	
 				).setReverse());
 			register(new OperatorInfo("-", OperatorType.LeftRightOrRight, max-3,
 				(double[] data) => { if (data.Length == 1) return -data[0]; return data[0] - data[1]; }
-				)); 
+				, (i, m) => { if (m.Length == 1) {
+						return CreateOperator("-", m[0].getDYDX());
+					} else { return CreateOperator("-", m[0].getDYDX(), m[1].getDYDX()); } })
+				
+				); 
 			register(new OperatorInfo("--", OperatorType.LeftRightOrRight, max - 3,
 				(double[] data) => { if (data.Length == 1) return data[0]; return data[0] +data[1]; }
-				));
-			register(new OperatorInfo("if", OperatorType.RUNCODE, max ,error.getValue,IF));
-			register(new OperatorInfo("else", OperatorType.RUNCODE, max-1, error.getValue, ELSE));
-			register(new OperatorInfo("return", OperatorType.RUNCODE, 2, error.getValue, RETURN));
-			register(new OperatorInfo("{", OperatorType.RUNCODE, max+1, error.getValue, CODEBLOCK));
+				, (i, m) => {
+					if (m.Length == 1)
+					{
+						return CreateOperator("+", m[0].getDYDX());
+					}
+					else { return CreateOperator("+", m[0].getDYDX(), m[1].getDYDX()); }
+				})
+				);
+			register(new OperatorInfo("if", OperatorType.RUNCODE, max ,error.getValue,null,IF));
+			register(new OperatorInfo("else", OperatorType.RUNCODE, max-1, error.getValue, null, ELSE));
+			register(new OperatorInfo("return", OperatorType.RUNCODE, 2, error.getValue, null, RETURN));
+			register(new OperatorInfo("{", OperatorType.RUNCODE, max+1, error.getValue, null, CODEBLOCK));
 
-			register(new OperatorInfo("/", OperatorType.LeftRight, max-2, (a, b) => { return a / b; }));
-			register(new OperatorInfo("*", OperatorType.LeftRight, max-2, (a, b) => { return a * b; }));
+			register(new OperatorInfo("/", OperatorType.LeftRight, max-2, (a, b) => { return a / b; }
+			, (i, m) => { var x = m[0]; var y = m[1];var x_ = x.getDYDX(i);var y_ = y.getDYDX(i);
+				return CreateOperator("/",CreateOperator("-",CreateOperator("*",x_,y),CreateOperator("*",y_,x)),CreateOperator("*",y,y));
+			}
+			));
+			register(new OperatorInfo("*", OperatorType.LeftRight, max-2, (a, b) => { return a * b; }
+			, (i, m) => {
+				var x = m[0]; var y = m[1]; var x_ = x.getDYDX(i); var y_ = y.getDYDX(i);
+				return CreateOperator("+", CreateOperator("*", x_, y), CreateOperator("*", y_, x));
+			}));
 			register(new OperatorInfo("%", OperatorType.LeftRight, max-2, (a, b) => { return a % b; }));
-			register(new OperatorInfo("^", OperatorType.LeftRight, max-1, Math.Pow,  Helper.asFactory((i, m) => { return new Operator(Helper.toSourceOperator((x, y,x_,y_) => x + y), m[0], m[1], m[0].getDYDX(i), m[1].getDYDX(i)); })));
-			register(new OperatorInfo("/-", OperatorType.LeftRight, max-2, (a, b) => { return a / -b; }));
-			register(new OperatorInfo("*-", OperatorType.LeftRight, max-2, (a, b) => { return a * -b; }));
+			register(new OperatorInfo("^", OperatorType.LeftRight, max-1, Math.Pow, (i, m) => {
+				var x = m[0]; var y = m[1]; var x_ = x.getDYDX(i); var y_ = y.getDYDX(i);
+				return CreateOperator("*", CreateOperator("^", x, y), CreateOperator("+", CreateOperator("*",y_,CreateOperator("ln",x)),CreateOperator("*",y,CreateOperator("/",x_,x))));
+			}));
+			register(new OperatorInfo("/-", OperatorType.LeftRight, max-2, (a, b) => { return a / -b; }
+				, (i, m) => {
+					var x = m[0]; var y = m[1]; var x_ = x.getDYDX(i); var y_ = y.getDYDX(i);
+					return CreateOperator("-", CreateOperator("/", CreateOperator("-", CreateOperator("*", x_, y), CreateOperator("*", y_, x)), CreateOperator("*", y, y)));
+				}
+			)
+				
+				);
+			register(new OperatorInfo("*-", OperatorType.LeftRight, max-2, (a, b) => { return a * -b; }, 
+				(i, m) => {
+				var x = m[0]; var y = m[1]; var x_ = x.getDYDX(i); var y_ = y.getDYDX(i);
+				return CreateOperator("-", CreateOperator("+", CreateOperator("*", x_, y), CreateOperator("*", y_, x)));
+			}));
 			register(new OperatorInfo("%-", OperatorType.LeftRight, max-2, (a, b) => { return a % -b; }));
-			register(new OperatorInfo("^-", OperatorType.LeftRight, max-1, (a, b) => Math.Pow(a, -b)));
+			register(new OperatorInfo("^-", OperatorType.LeftRight, max-1, (a, b) => Math.Pow(a, -b), (i, m) => {
+				var x = m[0]; var y = m[1]; var x_ = x.getDYDX(i); var y_ = y.getDYDX(i);
+				return CreateOperator("-", CreateOperator("*", CreateOperator("^", x, y), CreateOperator("+", CreateOperator("*", y_, CreateOperator("ln", x)), CreateOperator("*", y, CreateOperator("/", x_, x)))));
+			}));
 			register(new OperatorInfo("IF", OperatorType.Func, max, (a, b,c) => { if (a > 0) return b; return c; }));
-			register(new OperatorInfo("sin", OperatorType.Func, max, Math.Sin));
-			register(new OperatorInfo("cos", OperatorType.Func, max, Math.Cos));
+			register(new OperatorInfo("sin", OperatorType.Func, max, Math.Sin, (i, m) => {
+			
+				return CreateOperator("*", CreateOperator("cos", m[0]), m[0].getDYDX(i));
+
+			}));
+			register(new OperatorInfo("cos", OperatorType.Func, max, Math.Cos, (i, m) => {
+
+				return CreateOperator("*-", CreateOperator("sin", m[0]), m[0].getDYDX(i));
+
+			}));
 			register(new OperatorInfo("tan", OperatorType.Func, max, Math.Tan));
 			register(new OperatorInfo("arcsin", OperatorType.Func, max, Math.Asin));
 			register(new OperatorInfo("arccos", OperatorType.Func, max, Math.Acos));
@@ -147,7 +214,15 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo("arcsinh", OperatorType.Func, max, Math.Asinh));
 			register(new OperatorInfo("arctanh", OperatorType.Func, max, Math.Atanh));
 			register(new OperatorInfo("arctan2", OperatorType.Func, max, Math.Atan2));
-			register(new OperatorInfo("asin", OperatorType.Func, max, Math.Asin));
+			
+			register(new OperatorInfo("ln", OperatorType.Func, max, (OneElementOperator)Math.Log, (i, m) =>
+			{
+				return CreateOperator("*", CreateOperator("/", new NumberObject(1), m[0]), m[0].getDYDX(i));
+			}));
+			register(new OperatorInfo("asin", OperatorType.Func, max, Math.Asin, (i, m) =>
+			{
+				return mulID(CreateOperator("/",new NumberObject(1),CreateOperator("^",CreateOperator("-",new NumberObject(1), CreateOperator("*", m[0], m[0]) ),new NumberObject(0.5) ) ), m[0]);
+			}));
 			register(new OperatorInfo("acos", OperatorType.Func, max, Math.Acos));
 			register(new OperatorInfo("atan", OperatorType.Func, max, Math.Atan));
 			register(new OperatorInfo("abs", OperatorType.Func, max, Math.Abs));
@@ -167,23 +242,38 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo("pi", OperatorType.Source, max, (double[] data) => Math.PI));
 			register(new OperatorInfo("rad", OperatorType.Func, max, (a) => { return a * Math.PI / 180; }));
 			register(new OperatorInfo("degree", OperatorType.Func, max, (a) => { return a * 180 / Math.PI; }));
-			register(new OperatorInfo("x", OperatorType.Source, max, data => data[0]));
-			register(new OperatorInfo("y", OperatorType.Source, max, data => data[1]));
-			register(new OperatorInfo("z", OperatorType.Source,max, data => data[2]));
+			register(new OperatorInfo("x", OperatorType.Source, max, data => data[0],null,null,"varsindex0"));
+			register(new OperatorInfo("y", OperatorType.Source, max, data => data[1], null, null, "varsindex1"));
+			register(new OperatorInfo("z", OperatorType.Source,max, data => data[2], null, null, "varsindex2"));
 		}
 		
 		OperatorInfo register(string mark, OperatorType type, int priority, SourceOperator so,ObjectFactory factory=null , string tag = "raw")
 		{
-			return register(new OperatorInfo(mark, type, priority, so, factory,tag));
+			return register(new OperatorInfo(mark, type, priority, so,null, factory,tag));
+		}
+
+		MathObject mulID(MathObject d,MathObject m,int i=0)
+		{
+			return CreateOperator("*",m.getDYDX(i),d);
 		}
 	
+		public Operator CreateOperator(string name,params MathObject[] objects)
+		{
+			var v=match(name);
+			if(v!=null)
+			{
+				return new Operator(v.Operator0, objects).setDerivativeGetter(v.DerivativeGetter);
+			}
+
+			return Operator.NAN;
+		}
 		OperatorInfo register(string mark, OperatorType type, int priority,OneElementOperator so, ObjectFactory factory = null, string tag = "raw")
 		{
-		return	register(new OperatorInfo(mark, type, priority, so,factory, tag));
+		return	register(new OperatorInfo(mark, type, priority, so,null,factory, tag));
 		}
 		OperatorInfo register(string mark, OperatorType type, int priority, TwoElementsOperator so, ObjectFactory factory = null, string tag = "raw")
 		{
-		return	register(new OperatorInfo(mark, type, priority, so,factory, tag));
+		return	register(new OperatorInfo(mark, type, priority, so,null,factory, tag));
 		}
 
 
@@ -484,7 +574,7 @@ namespace DVLib.LabDataHelper
 						}
 						else
 						{
-							manager.registerMathFunc(names[0], manager.GetObject(v[1].name, scanInfos, r));
+							manager.registerMathFunc(names[0], manager.GetObject(v[1].name, scanInfos, r),funSize,"CMath");
 						}
 						
 						manager.removeWithCondition((v) => { return v.tag.StartsWith("tempindex"); });
@@ -668,9 +758,17 @@ namespace DVLib.LabDataHelper
 			ScanForOperators(ref t, infos);
 			return (t, infos);
 		}
-		public void registerMathFunc(string name, MathObject mathObject, string tag = "customize")
+		public void registerMathFunc(string name, MathObject mathObject,int pm, string tag = "customize")
 		{ 
-		register(new OperatorInfo(name,OperatorType.Func,max,mathObject.getValue,null,tag));
+		register(new OperatorInfo(name, OperatorType.Func, max, mathObject.getValue, (i, m) =>
+		{
+			MathObject[] ms = new MathObject[pm];
+			for(int j=0;j<pm;j++)
+			{
+				ms[j]= CreateOperator("*", mathObject.getDYDX(j).clone().replace(j, m[j]), m[j].getDYDX(i));
+			}
+			return CreateOperator("sum", ms);
+		},null,tag));
 		}
 
 			public void registerFunc(string name,ScanSet mathObject,ScanResult sr,string tag="customize")
@@ -679,7 +777,7 @@ namespace DVLib.LabDataHelper
 			MathObject m = GetObject(mathObject.Item1, mathObject.Item2, sr);
 
 			if (match(name) == null || canOver)
-				register(new OperatorInfo(name, OperatorType.Func, max, (double[] data) => (m.getValue(data)), (string code, OperatorScanInfo selected, List<OperatorScanInfo> infos, MathObjectManager manager,ScanResult sr) =>
+				register(new OperatorInfo(name, OperatorType.Func, max, (double[] data) => (m.getValue(data)),null, (string code, OperatorScanInfo selected, List<OperatorScanInfo> infos, MathObjectManager manager,ScanResult sr) =>
 				{
 					var r = ObjectInfo<MathObject, OperatorInfo, MathObjectManager>.solveFunc(code, selected, infos, manager);
 					int funcSize = r.Length;
@@ -984,16 +1082,23 @@ namespace DVLib.LabDataHelper
 	{
 
 		internal SourceOperator Operator0 { get; private set; }	
-
+		internal DerivativeGetter DerivativeGetter { get; private set; }
+		//internal int pmSize { get; private set; }
 		public OperatorInfo()
 		{
 
 		}
+		/*
+		public OperatorInfo setPmSize(int s)
+		{
+			pmSize = s;
+			return this;
+		}*/
 		public OperatorInfo(OperatorInfo other)
 		{
 			copyForm(other);
 		}
-		public OperatorInfo(string mark, OperatorType type,int priority,SourceOperator so,ObjectFactory factory=null,string tag="raw"):base()
+		public OperatorInfo(string mark, OperatorType type,int priority,SourceOperator so,DerivativeGetter d=null,ObjectFactory factory=null,string tag="raw"):base()
 	
 		{
 			this.mark = mark;
@@ -1002,13 +1107,14 @@ namespace DVLib.LabDataHelper
 			this.priority=priority;
 			this.tag = tag;
 			this.factory = factory;
+			DerivativeGetter = d;
 			if(this.factory==null)
 			{
 				this.factory = getDefault(this);
 			}
 		}
 	
-		public OperatorInfo(string mark, OperatorType type, int priority, OneElementOperator so, ObjectFactory factory = null, string tag = "raw") : this(mark, type, priority,Helper.toSourceOperator(so),factory, tag)
+		public OperatorInfo(string mark, OperatorType type, int priority, OneElementOperator so, DerivativeGetter d = null, ObjectFactory factory = null, string tag = "raw") : this(mark, type, priority,Helper.toSourceOperator(so),d,factory, tag)
 	    {
 			
 		}
@@ -1033,16 +1139,18 @@ namespace DVLib.LabDataHelper
 			this.tag = operatorInfo.tag;
 			this.dot = operatorInfo.dot;
 			this.reverse = operatorInfo.reverse;
+			this.DerivativeGetter = operatorInfo.DerivativeGetter;
 			return this;
 		}
 
-		public OperatorInfo(string mark, OperatorType type, int priority,TwoElementsOperator so, ObjectFactory factory = null, string tag = "raw") : this(mark, type, priority, Helper.toSourceOperator(so), factory, tag)
+		public OperatorInfo(string mark, OperatorType type, int priority,TwoElementsOperator so,DerivativeGetter derivative=null, ObjectFactory factory = null, string tag = "raw") : this(mark, type, priority, Helper.toSourceOperator(so),derivative, factory, tag)
 
-		{
+        {
+
 		}
-		public OperatorInfo(string mark, OperatorType type, int priority, ThreeElementsOperator so, ObjectFactory factory = null, string tag = "raw") : this(mark, type, priority, Helper.toSourceOperator(so), factory, tag)
+		public OperatorInfo(string mark, OperatorType type, int priority, ThreeElementsOperator so, DerivativeGetter derivative=null ,ObjectFactory factory = null, string tag = "raw") : this(mark, type, priority, Helper.toSourceOperator(so),derivative, factory, tag)
+        {
 
-		{
 		}
 		static MathObject LR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager,ScanResult r)
 		{
@@ -1051,7 +1159,7 @@ namespace DVLib.LabDataHelper
 
 			var v=solveLR(text, ois, infos, manager);
 			return new Operator(ois.operatorInfo.Operator0, manager.GetObject(v[0].name, v[0].infos,r),
-				manager.GetObject(v[1].name, v[1].infos, r));
+				manager.GetObject(v[1].name, v[1].infos, r)).setDerivativeGetter(ois.operatorInfo.DerivativeGetter);
 		}
 
 		static MathObject RunTimeR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager,ScanResult r)
@@ -1085,12 +1193,12 @@ namespace DVLib.LabDataHelper
 static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager,ScanResult r)
 		{
 			var v=solveR(text, ois, infos, manager);
-			return new Operator(ois.operatorInfo.Operator0,manager. GetObject(v.name,v.infos,r));
+			return new Operator(ois.operatorInfo.Operator0,manager. GetObject(v.name,v.infos,r)).setDerivativeGetter(ois.operatorInfo.DerivativeGetter);
 		}
 	static	MathObject L(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager, ScanResult result)
 		{
 			var v=solveL(text, ois, infos, manager);
-			return new Operator(ois.operatorInfo.Operator0,manager. GetObject(v.name,v.infos,result));
+			return new Operator(ois.operatorInfo.Operator0,manager. GetObject(v.name,v.infos,result)).setDerivativeGetter(ois.operatorInfo.DerivativeGetter);
 		}
 	static	MathObject RLOR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager, ScanResult result)
 		{
@@ -1120,7 +1228,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			}
 			return new Operator(ois.operatorInfo.Operator0, mathObjects
 
-				);
+				).setDerivativeGetter(ois.operatorInfo.DerivativeGetter);
 		}
 			ObjectFactory getDefault(OperatorInfo operatorInfo)
 		{
@@ -1146,7 +1254,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			}
 			else if (operatorInfo.type == OperatorType.Source)
 			{
-				return (a,b,c,d,r)=> { int index = -1; if (b.operatorInfo.tag.StartsWith("tempindex")){ index = int.Parse(b.operatorInfo.tag.Substring(9)); }; return new SourceObject(operatorInfo.Operator0).setIndex(index); };
+				return (a,b,c,d,r)=> { int index = -1; if (b.operatorInfo.tag.StartsWith("tempindex")|| b.operatorInfo.tag.StartsWith("varsindex")) { index = int.Parse(b.operatorInfo.tag.Substring(9)); }; return new SourceObject(operatorInfo.Operator0).setIndex(index); };
 			}
 
 			return Error;
@@ -1162,6 +1270,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 
 	public abstract class MathObject
 	{
+
 		class ERRORObject : MathObject
 		{
 			public override double getValue(params double[] ms)
@@ -1174,7 +1283,28 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		{
 			get { return this is RuntimeMathObject; }
 		}
+		internal virtual MathObject clone()
+		{
+			return ERROR;
+		}
 
+		internal virtual MathObject replace(int index,MathObject m)
+		{
+			return this;
+		}
+		//internal int pmSize = 0;
+		/*public  int getPmSize()
+		{
+			return pmSize;
+		}
+		*/
+
+		/*
+		internal MathObject setPmSize(int s)
+		{
+			pmSize = s;
+			return this;
+		}*/
 		public virtual MathObject getDYDX(int index=0)
 		{
 			return ERROR;
@@ -1443,24 +1573,68 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 	{
 		MathObject[] A;
 		SourceOperator Operator1;
-		
-		static DerivativeGetter defaultDerivative = delegate{ return MathObject.ERROR; };
+
+		internal static DerivativeGetter defaultDerivative = delegate { return MathObject.ERROR; };
+		internal static Operator NAN;
 
 		DerivativeGetter getter;
 
+		static Operator()
+			{
+			NAN = new Operator(a => double.NaN);
+			}
 		
 		public Operator(SourceOperator op,params MathObject[] a)
 		{
 			A = a;
 			Operator1 = op;
 		}
+		internal override MathObject clone()
+		{
+			Operator op = new Operator(Operator1, new MathObject[A.Length]);
+			op.setDerivativeGetter(getter);
+
+			for (int i = 0; i < A.Length; i++)
+			{
+				op.A[i] = A[i].clone();	
+			}
+
+			return op;
+		}
+		internal override MathObject replace(int index, MathObject m)
+		{
+
+			for(int i=0;i<A.Length;i++)
+			{
+                if (A[i] is SourceObject)
+				{
+					bool r=((SourceObject)A[i]).index==index;
+					if(r)
+					{
+						A[i] = m;
+					}
+				}
+				else 
+                {
+                   A[i].replace(index, m); 
+                }
+            }
+
+			return this;
+		}
 		public Operator setDerivativeGetter(DerivativeGetter getter)
 		{
+			if(getter==null)
+			{
+				return this;
+			}
 			this.getter = getter;
 			return this;
 		}
 		public override MathObject getDYDX(int index = 0)
 		{
+			if(getter!=null)
+			return getter(index, A);
 			return base.getDYDX(index);
 		}
 
@@ -1490,10 +1664,27 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 	public class SourceObject : MathObject
 	{
 		SourceOperator operator1;
+
+
+
 		internal int index = -1;
+
+
+
 		public SourceObject(SourceOperator one)
 		{
 			operator1 = one; ;
+		}
+
+		public override MathObject getDYDX(int index = 0)
+		{
+			if (index == this.index)
+			return new NumberObject(1);
+			return new NumberObject(0);
+		}
+		internal override MathObject clone()
+		{
+			return this;
 		}
 		public SourceObject setIndex(int i)
 		{
@@ -1520,6 +1711,8 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			return operator1(inputValues);
 		}
 	}
+
+	
 	public class NumberObject:MathObject
 	{
 		double value;
@@ -1529,6 +1722,15 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			this.value = value;
 		}
 
+		public override MathObject getDYDX(int index = 0)
+		{
+			return new NumberObject(0);
+		}
+
+		internal override MathObject clone()
+		{
+			return this;
+		}
 		public override double getValue(params double[] inputValues)
 		{
 			return value ;
