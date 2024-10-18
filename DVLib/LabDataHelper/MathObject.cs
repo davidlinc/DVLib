@@ -16,8 +16,10 @@ using ScanSet = System.ValueTuple<string,System.Collections.Generic.List<DVLib.L
 using DVLib.LabDataHelper.MathObjectSystem;
 using System.Runtime.Intrinsics.X86;
 using System.Xml;
+
 using System.Diagnostics;
 using NewPhysics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DVLib.LabDataHelper
 {
@@ -31,6 +33,7 @@ namespace DVLib.LabDataHelper
 	public delegate (object,SourceOperator) MethodFactory(MathObjectManager manager, params (string, List<OperatorScanInfo>)[] vars);
 	public delegate void OnReturn(object o);
 	public delegate void AfterRun<T>(T o);
+	public delegate MathObject OperatorReplace(MathObjectManager m, MathOperator o, MathObject[] objects);
 	public delegate MathObject DerivativeGetter(int index,params MathObject[] objects);
 
    
@@ -217,6 +220,16 @@ namespace DVLib.LabDataHelper
 				var x = m[0]; var y = m[1]; var x_ = x.getDerivative(i); var y_ = y.getDerivative(i);
 				return OP("-", OP("*", OP("^", x, y), OP("+", OP("*", y_, OP("ln", x)), OP("*", y, OP("/", x_, x)))));
 			}));
+			register(new OperatorInfo("dirac", OperatorType.Func, max, so: (a) => { if (a==0) return double.PositiveInfinity; return 0; }, d: (i, m) =>
+			{
+
+				return mulID(OP("dirac'"), m[0], i) ;
+
+			}));
+
+			//register(new OperatorInfo("'",OperatorType.Left,max,))
+
+			register(new OperatorInfo("dirac'", OperatorType.Func, max, so: (a) => { if (a == 0.0) return double.PositiveInfinity;if (a == -0.0) return double.NegativeInfinity; return 0; }));
 			register(new OperatorInfo("IF", OperatorType.Func, max, so: (a, b, c) => { if (a > 0) return b; return c; }));
 			register(new OperatorInfo("sin", OperatorType.Func, max, so: Math.Sin, d: (i, m) =>
 			{
@@ -328,16 +341,16 @@ namespace DVLib.LabDataHelper
 			return OP("*",m.getDerivative(i),d);
 		}
 	
-		public Operator OP(string name,params MathObject[] objects)
+		public MathOperator OP(string name,params MathObject[] objects)
 		{
 			var v=match(name);
 
 			if(v!=null)
 			{
-				return new Operator( v,objects);
+				return new MathOperator( v,objects);
 			}
 
-			return Operator.NAN;
+			return MathOperator.NAN;
 		}
 		OperatorInfo register(string mark, OperatorType type, int priority,OneElementOperator so, ObjectFactory factory = null, string tag = "raw")
 		{
@@ -500,7 +513,7 @@ namespace DVLib.LabDataHelper
 				}
                 for (int i = 0; i < ss.Length; i++)
                 {
-                }return new Operator((d) => { if(d.Length>0) return d[d.Length-1]; return -1; },mathObjects);
+                }return new MathOperator((d) => { if(d.Length>0) return d[d.Length-1]; return -1; },mathObjects);
 			});
 
 		}
@@ -575,7 +588,7 @@ namespace DVLib.LabDataHelper
 
 
 
-					return new Operator(mo.getValue);
+					return new MathOperator(mo.getValue);
 				});
 
 			return error;
@@ -833,7 +846,7 @@ namespace DVLib.LabDataHelper
 			MathObject[] ms = new MathObject[pm];
 			for (int j = 0; j < pm; j++)
 			{
-				ms[j] = OP("*", mathObject.getDerivative(j).clone().replace(j, m[j]), m[j].getDerivative(i));
+				ms[j] = OP("*", mathObject.getDerivative(j).clone().replaceVarible(j, m[j]), m[j].getDerivative(i));
 			}
 			return OP("sum", ms);
 		}, null));
@@ -869,7 +882,7 @@ namespace DVLib.LabDataHelper
 							var v = updatePms(mathObject, r, this);
 							return Run(v.Item1);
 						}
-						return new Operator(selected.operatorInfo, mathObjects);
+						return new MathOperator(selected.operatorInfo, mathObjects);
 					}
 							);
 
@@ -1149,7 +1162,8 @@ namespace DVLib.LabDataHelper
 	public class OperatorInfo:ObjectInfo<MathObject,OperatorInfo,MathObjectManager>
 	{
 
-		internal SourceOperator Operator0 { get; private set; }	
+		internal SourceOperator Operator0 { get; private set; }
+		internal bool Random { get; private set; } = false;
 		internal DerivativeGetter DerivativeGetter { get; private set; }
 		internal static OperatorInfo info=new OperatorInfo("Empty",OperatorType.Func,0);
 		internal double value ;
@@ -1167,6 +1181,12 @@ namespace DVLib.LabDataHelper
 		public OperatorInfo(OperatorInfo other)
 		{
 			copyForm(other);
+		}
+
+		public OperatorInfo setRandom()
+		{
+			Random = true;
+			return this;
 		}
 		public OperatorInfo(string mark, OperatorType type, int priority, string tag = "raw", SourceOperator so = null, DerivativeGetter d = null, ObjectFactory factory = null) : base()
 	
@@ -1243,7 +1263,7 @@ namespace DVLib.LabDataHelper
 		
 
 			var v=solveLR(text, ois, infos, manager);
-			return new Operator( ois.operatorInfo,manager.GetObject(v[0].name, v[0].infos,r),
+			return new MathOperator( ois.operatorInfo,manager.GetObject(v[0].name, v[0].infos,r),
 				manager.GetObject(v[1].name, v[1].infos, r)).setDerivativeGetter(ois.operatorInfo.DerivativeGetter);
 		}
 
@@ -1255,7 +1275,7 @@ namespace DVLib.LabDataHelper
 
 				var mo = manager.GetObject(v.name, v.infos,r);
 			
-				return new Operator(ois.operatorInfo,mo );
+				return new MathOperator(ois.operatorInfo,mo );
 
 			});
 		
@@ -1269,7 +1289,7 @@ namespace DVLib.LabDataHelper
 		return	new RuntimeMathObject((e) =>
 			{
 
-				return  new Operator(ois.operatorInfo,a ,
+				return  new MathOperator(ois.operatorInfo,a ,
 				b);
 
 			});
@@ -1278,12 +1298,12 @@ namespace DVLib.LabDataHelper
 static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager,ScanResult r)
 		{
 			var v=solveR(text, ois, infos, manager);
-			return new Operator(ois.operatorInfo,manager. GetObject(v.name,v.infos,r)).setDerivativeGetter(ois.operatorInfo.DerivativeGetter);
+			return new MathOperator(ois.operatorInfo,manager. GetObject(v.name,v.infos,r)).setDerivativeGetter(ois.operatorInfo.DerivativeGetter);
 		}
 	static	MathObject L(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager, ScanResult result)
 		{
 			var v=solveL(text, ois, infos, manager);
-			return new Operator(ois.operatorInfo,manager. GetObject(v.name,v.infos,result)).setDerivativeGetter(ois.operatorInfo.DerivativeGetter);
+			return new MathOperator(ois.operatorInfo,manager. GetObject(v.name,v.infos,result)).setDerivativeGetter(ois.operatorInfo.DerivativeGetter);
 		}
 
 		static MathObject VAR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager, ScanResult result)
@@ -1310,7 +1330,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			return MathObjectManager.error;
 		}
 
-	static	Operator Func(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager,ScanResult result)
+	static	MathOperator Func(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager,ScanResult result)
 		{
 			var r=solveFunc(text, ois, infos, manager);
 			int funcSize = r.Length;
@@ -1320,7 +1340,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			{
 					mathObjects[i] = manager.GetObject(r[i].name, r[i].infos,result);
 			}
-			return new Operator(ois.operatorInfo, mathObjects
+			return new MathOperator(ois.operatorInfo, mathObjects
 
 				).setDerivativeGetter(ois.operatorInfo.DerivativeGetter);
 		}
@@ -1368,7 +1388,10 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 
 	public abstract class MathObject
 	{
-		internal OperatorInfo operatorInfo{get; private set;}
+		[NotNull]
+		internal  OperatorInfo operatorInfo{get; private set;}
+		public string mark { get { return operatorInfo.mark; } }
+		public bool isRandom { get { return operatorInfo.Random; } }
 		internal MathObject(OperatorInfo operatorInfo)
 		{
 			this.operatorInfo = operatorInfo;
@@ -1393,8 +1416,19 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		{
 			return ERROR;
 		}
-
-		internal virtual MathObject replace(int index,MathObject m)
+		public virtual bool isSame(MathObject mathObject)
+		{
+			return mathObject == this;
+		}
+		public virtual bool isNumber()
+		{
+			return false;
+		}
+		public virtual bool isNumber(double value)
+		{
+			return false;
+		}
+		internal virtual MathObject replaceVarible(int index,MathObject m)
 		{
 			return this;
 		}
@@ -1416,6 +1450,14 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			return ERROR;
 		}
 
+		public virtual MathObject getSimplify(MathObjectManager m)
+		{
+			return this;
+		}
+		public virtual MathObject simplify(MathObjectManager m)
+		{
+			return this;
+		}
 		public RuntimeMathObject AsRuntime()
 		{
 			if(this is RuntimeMathObject)
@@ -1431,10 +1473,6 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 				return (RuntimeMathObject)this;
 			}
 			return new RuntimeMathObject((e) => { return this; });
-		}
-		public virtual MathObject AsRunCodeMode()
-		{
-			return this;
 		}
 		public abstract double getValue(params double[] ms);
 	}
@@ -1675,42 +1713,147 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		}
 	}
 
-	public class Operator : MathObject
+	public class MathOperator : MathObject
 	{
 		MathObject[] A;
-		SourceOperator Operator1;
-
-		internal static DerivativeGetter defaultDerivative = delegate { return MathObject.ERROR; };
-		internal static Operator NAN;
+		SourceOperator Operator;
+		internal static DerivativeGetter defaultDerivative = delegate { return NumberObject.ZERO; };
+		internal static MathOperator NAN;
 
 		DerivativeGetter getter;
+	
+		static Dictionary<string,OperatorReplace> keyValuePairs=new Dictionary<string, OperatorReplace> ();
 
-		static Operator()
+		static MathOperator()
 		{
-			NAN = new Operator(a => double.NaN);
-		}
+			NAN = new MathOperator(a => double.NaN);
 
-		public Operator(OperatorInfo info, params MathObject[] a) : base(info)
+			registerReplace("*", (m, o, ms) =>
+			{
+				var v1 = ms[0];
+				var v2 = ms[1];
+
+
+				bool i01 = v1.isNumber(0);
+				bool i02 = v2.isNumber(0);
+				if (i01 || i02)
+				{
+					return NumberObject.ZERO;
+				}
+				
+				if(v1.isNumber(1))
+				{
+					return v2;
+				}
+				if(v2.isNumber(1))
+				{
+					return v1;
+				}
+
+
+				return o;
+
+			});
+			registerReplace("+", (m,o, ms) =>
+			{
+				var v1 = ms[0];
+				var v2 = ms[1];
+
+				if(v1.isNumber()&&v2.isNumber())
+				{
+					
+						return new NumberObject(v1.getValue() + v2.getValue());
+					
+				}
+				bool i01 = v1.isNumber(0);
+				bool i02 = v2.isNumber(0);
+				if (i01 && i02)
+				{
+					return NumberObject.ZERO;
+				}
+				else if (i01)
+				{
+					return v2;
+				}
+				else if (i02)
+				{
+					return v1;
+				}
+
+
+
+				return o;
+
+			});
+			registerReplace("-", (m,o, ms) =>
+			{
+				if(ms.Length==2)
+				{
+                var v1 = ms[0];
+				var v2 = ms[1];
+                 if(v1.isSame(v2))
+				{
+					return NumberObject.ZERO;
+				}
+				if (v1.isNumber() && v2.isNumber())
+				{
+
+					return new NumberObject(v1.getValue() - v2.getValue());
+
+				}
+				bool i01 = v1.isNumber(0);
+				bool i02 = v2.isNumber(0);
+				if (i01 && i02)
+				{
+					return NumberObject.ZERO;
+				}
+				else if (i01)
+				{
+					return m.OP("-",v2);
+				}
+				else if (i02)
+				{
+					return v1;
+				}
+				}
+				else
+				{
+					var v=ms[0];
+					if(v.isNumber(0))
+					{
+						return NumberObject.ZERO;
+					}
+				}
+				return o;
+
+			});
+		}
+		static void registerReplace(string name,OperatorReplace replace)
+		{
+			keyValuePairs.Add(name, replace);
+		}
+		public MathOperator(OperatorInfo info, params MathObject[] a) : base(info)
 		{
 			A = a;
-			Operator1 = info.Operator0;
+			Operator = info.Operator0;
 			getter = info.DerivativeGetter;
 		}
-
-		private Operator(SourceOperator s, OperatorInfo i, MathObject[] m):base(i)
+		
+	
+		private MathOperator(SourceOperator s, OperatorInfo i, MathObject[] m):base(i)
 			{
 			A = m;
-			Operator1 = s;
+			Operator = s;
 			
 			}
-		public Operator(SourceOperator op, params MathObject[] a) : base(OperatorInfo.info)
+		public MathOperator(SourceOperator op, params MathObject[] a) : base(OperatorInfo.info)
 		{
 			A = a;
-			Operator1 = op;
+			Operator = op;
 		}
 		internal override MathObject clone()
 		{
-			Operator op = new Operator(Operator1,operatorInfo, new MathObject[A.Length]);
+			MathOperator op = new MathOperator(Operator,operatorInfo, new MathObject[A.Length]);
 			op.setDerivativeGetter(getter);
 
 			for (int i = 0; i < A.Length; i++)
@@ -1721,6 +1864,59 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			return op;
 		}
 
+		public override bool isSame(MathObject mathObject)
+		{
+			if(mathObject is MathOperator)
+			{
+				if (mathObject is MathOperator && mark == mathObject.mark)
+				{
+					bool flag = true;
+					var mo = (MathOperator)mathObject;
+					if (mo.A.Length == A.Length)
+					{
+						for (int i = 0; i < A.Length; i++)
+						{
+							if (!A[i].isSame(mo.A[i]))
+							{
+								flag = false;
+								break;
+							}
+						}
+						return flag;
+					}
+				}
+			}
+
+			return false;
+		}
+		public override MathObject getSimplify(MathObjectManager m)
+		{
+
+			double[] doubles = new double[A.Length];
+			bool allIsNumber = !isRandom;
+			for(int i = 0;i<A.Length;i++)
+			{
+				if (A[i].isNumber())
+				{
+					doubles[i] = A[i].getValue();
+				}
+				else
+				{
+					allIsNumber=false;
+					break;
+				}
+			}
+			if(allIsNumber)
+			{
+				return new NumberObject(Operator(doubles));
+			}
+
+			if(keyValuePairs.TryGetValue(operatorInfo.mark,out var v))
+			{
+				return v(m,this,A);
+			}
+			return base.getSimplify(m);
+		}
 		public override string ToString()
 		{
 			var t = operatorInfo.type;
@@ -1788,7 +1984,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 
 			return stringBuilder.ToString();
 		}
-		internal override MathObject replace(int index, MathObject m)
+		internal override MathObject replaceVarible(int index, MathObject m)
 		{
 
 			for(int i=0;i<A.Length;i++)
@@ -1803,13 +1999,13 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 				}
 				else 
                 {
-                   A[i].replace(index, m); 
+                   A[i].replaceVarible(index, m); 
                 }
             }
 
 			return this;
 		}
-		public Operator setDerivativeGetter(DerivativeGetter getter)
+		public MathOperator setDerivativeGetter(DerivativeGetter getter)
 		{
 			if(getter==null)
 			{
@@ -1836,16 +2032,16 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		}
 		public override double getValue(params double[] inputValues)
 		{
-			if(Operator1 is null)
+			if(Operator is null)
 			{
 				return double.NaN;
 			}
 			if (A is null )
 			{
-				return  Operator1(inputValues) ;
+				return  Operator(inputValues) ;
 			}
 
-			return  Operator1(getValues(inputValues)) ;
+			return  Operator(getValues(inputValues)) ;
 		}
 	}
 	public class VaribleObject : MathObject
@@ -1877,7 +2073,14 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			index = i;
 			return this ;
 		}
-
+		public override bool isSame(MathObject mathObject)
+		{
+			if(mathObject is VaribleObject)
+			{
+				return index == ((VaribleObject)mathObject).index;
+			}
+			return false;
+		}
 		public override string ToString()
 		{
 			return operatorInfo.mark;
@@ -1908,6 +2111,12 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 	public class NumberObject:MathObject
 	{
 		double value;
+		public static readonly NumberObject ZERO = new NumberObject(0);
+		public static readonly NumberObject ONE = new NumberObject(1);
+		public static readonly NumberObject HALF = new NumberObject(0.5);
+		public static readonly NumberObject TWO= new NumberObject(2);
+		public static readonly NumberObject E = new NumberObject(Math.E);
+		public static readonly NumberObject PI = new NumberObject(Math.PI);
 
 		public NumberObject(OperatorInfo info):base(info)
 		{
@@ -1921,7 +2130,23 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		{
 			return new NumberObject(0);
 		}
+		public override bool isSame(MathObject mathObject)
+		{
+			if(mathObject is NumberObject)
+			{
+				return ((NumberObject)mathObject).value == value;
+			}
+			return false;
+		}
+		public override bool isNumber()
+		{
+			return true;
+		}
 
+		public override bool isNumber(double value)
+		{
+			return value==this.value;
+		}
 		internal override MathObject clone()
 		{
 			return this;
@@ -1930,7 +2155,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		{
 			return value ;
 		}
-
+		
 		public override string ToString()
 		{
 			return value.ToString();
