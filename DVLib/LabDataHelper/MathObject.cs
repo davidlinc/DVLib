@@ -34,7 +34,7 @@ namespace DVLib.LabDataHelper
 	public delegate void OnReturn(object o);
 	public delegate void AfterRun<T>(T o);
 	public delegate MathObject OperatorReplace(MathObjectManager m, MathOperator o, MathObject[] objects);
-	public delegate MathObject DerivativeGetter(int index,params MathObject[] objects);
+	public delegate MathObject DerivativeGetter(int index,MathObject source,params MathObject[] objects);
 
    
 
@@ -115,14 +115,14 @@ namespace DVLib.LabDataHelper
 		public override	void  registerDefault()
 		{
 			
-			register(new OperatorInfo("+", OperatorType.LeftRight, max - 4, so: Helper.toSourceOperator((a, b) => { return a + b; }), d: (i, m) =>
+			register(new OperatorInfo("+", OperatorType.LeftRight, max - 4, so: Helper.toSourceOperator((a, b) => { return a + b; }), d: (i,o, m) =>
 			{
 
 				return OP("+", m[0].getDerivative(i), m[1].getDerivative(i));
 			}
 			));
 
-			register(new OperatorInfo("sum", OperatorType.Func, max, so: (double[] m) => { double sum = 0; foreach (var i in m) sum += i; return sum; }, d: (i, m) =>
+			register(new OperatorInfo("sum", OperatorType.Func, max, so: (double[] m) => { double sum = 0; foreach (var i in m) sum += i; return sum; }, d: (i,o, m) =>
 			{
 				MathObject[] ms = new MathObject[m.Length];
 				for (int j = 0; j < m.Length; j++)
@@ -154,7 +154,7 @@ namespace DVLib.LabDataHelper
 				).setReverse());
 			register(new OperatorInfo("-", OperatorType.LeftRightOrRight, max - 3,
 				so: (double[] data) => { if (data.Length == 1) return -data[0]; return data[0] - data[1]; }
-				, d: (i, m) =>
+				, d: (i,o, m) =>
 				{
 					if (m.Length == 1)
 					{
@@ -166,7 +166,7 @@ namespace DVLib.LabDataHelper
 				); 
 			register(new OperatorInfo("--", OperatorType.LeftRightOrRight, max - 3,
 				so: (double[] data) => { if (data.Length == 1) return data[0]; return data[0] + data[1]; }
-				, d: (i, m) =>
+				, d: (i,o, m) =>
 				{
 					if (m.Length == 1)
 					{
@@ -181,26 +181,26 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo("{", OperatorType.RUNCODE, max + 1, so: error.getValue, d: null, factory: CODEBLOCK));
 
 			register(new OperatorInfo("/", OperatorType.LeftRight, max - 2, so: (a, b) => { return a / b; }
-			, derivative: (i, m) =>
+			, derivative: (i,o, m) =>
 			{
 				var x = m[0]; var y = m[1]; var x_ = x.getDerivative(i); var y_ = y.getDerivative(i);
 				return OP("/", OP("-", OP("*", x_, y), OP("*", y_, x)), OP("*", y, y));
 			}
 			));
 			register(new OperatorInfo("*", OperatorType.LeftRight, max - 2, so: (a, b) => { return a * b; }
-			, derivative: (i, m) =>
+			, derivative: (i, o, m) =>
 			{
 				var x = m[0]; var y = m[1]; var x_ = x.getDerivative(i); var y_ = y.getDerivative(i);
 				return OP("+", OP("*", x_, y), OP("*", y_, x));
 			}));
 			register(new OperatorInfo("%", OperatorType.LeftRight, max - 2, so: (a, b) => { return a % b; }));
-			register(new OperatorInfo("^", OperatorType.LeftRight, max - 1, so: Math.Pow, derivative: (i, m) =>
+			register(new OperatorInfo("^", OperatorType.LeftRight, max - 1, so: Math.Pow, derivative: (i, o, m) =>
 			{
 				var x = m[0]; var y = m[1]; var x_ = x.getDerivative(i); var y_ = y.getDerivative(i);
 				return OP("*", OP("^", x, y), OP("+", OP("*", y_, OP("ln", x)), OP("*", y, OP("/", x_, x))));
 			}));
 			register(new OperatorInfo("/-", OperatorType.LeftRight, max - 2, so: (a, b) => { return a / -b; }
-				, derivative: (i, m) =>
+				, derivative: (i, o, m) =>
 				{
 					var x = m[0]; var y = m[1]; var x_ = x.getDerivative(i); var y_ = y.getDerivative(i);
 					return OP("-", OP("/", OP("-", OP("*", x_, y), OP("*", y_, x)), OP("*", y, y)));
@@ -209,59 +209,59 @@ namespace DVLib.LabDataHelper
 
 				);
 			register(new OperatorInfo("*-", OperatorType.LeftRight, max - 2, so: (a, b) => { return a * -b; },
-				derivative: (i, m) =>
+				derivative: (i, o, m) =>
 				{
 					var x = m[0]; var y = m[1]; var x_ = x.getDerivative(i); var y_ = y.getDerivative(i);
 					return OP("-", OP("+", OP("*", x_, y), OP("*", y_, x)));
 				}));
 			register(new OperatorInfo("%-", OperatorType.LeftRight, max - 2, so: (a, b) => { return a % -b; }));
-			register(new OperatorInfo("^-", OperatorType.LeftRight, max - 1, so: (a, b) => Math.Pow(a, -b), derivative: (i, m) =>
+			register(new OperatorInfo("^-", OperatorType.LeftRight, max - 1, so: (a, b) => Math.Pow(a, -b), derivative: (i, o, m) =>
 			{
 				var x = m[0]; var y = m[1]; var x_ = x.getDerivative(i); var y_ = y.getDerivative(i);
 				return OP("-", OP("*", OP("^", x, y), OP("+", OP("*", y_, OP("ln", x)), OP("*", y, OP("/", x_, x)))));
 			}));
-			register(new OperatorInfo("dirac", OperatorType.Func, max, so: (a) => { if (a==0) return double.PositiveInfinity; return 0; }, d: (i, m) =>
+			register(new OperatorInfo("dirac", OperatorType.Func, max, so: (a) => { if (a==0) return double.PositiveInfinity; return 0; }, d: (i,o, m) =>
 			{
-
-				return mulID(OP("dirac'"), m[0], i) ;
-
+				return mulID(OP("'",OP("dirac")), m[0], i) ;
 			}));
 
-			//register(new OperatorInfo("'",OperatorType.Left,max,))
+			register(new OperatorInfo("'", OperatorType.Left, max - 1, "raw", (a) => a[0] ==0?double.NaN:0, (i, o, m) =>
+			{
+				return mulID(OP("'", o), m[0], i);
+			},                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              DE));
 
-			register(new OperatorInfo("dirac'", OperatorType.Func, max, so: (a) => { if (a == 0.0) return double.PositiveInfinity;if (a == -0.0) return double.NegativeInfinity; return 0; }));
 			register(new OperatorInfo("IF", OperatorType.Func, max, so: (a, b, c) => { if (a > 0) return b; return c; }));
-			register(new OperatorInfo("sin", OperatorType.Func, max, so: Math.Sin, d: (i, m) =>
+			register(new OperatorInfo("sin", OperatorType.Func, max, so: Math.Sin, d: (i,o, m) =>
 			{
 
 				return OP("*", OP("cos", m[0]), m[0].getDerivative(i));
 
 			}));
-			register(new OperatorInfo("cos", OperatorType.Func, max, so: Math.Cos, d: (i, m) =>
+			register(new OperatorInfo("cos", OperatorType.Func, max, so: Math.Cos, d: (i,o, m) =>
 			{
 
 				return OP("*-", OP("sin", m[0]), m[0].getDerivative(i));
 
 			}));
-			register(new OperatorInfo("tan", OperatorType.Func, max, so: Math.Tan,d:(i, m) =>
+			register(new OperatorInfo("tan", OperatorType.Func, max, so: Math.Tan,d:(i, o, m) =>
 			{
 				return mulID(OP("/", ONE, OP("sq", OP("cos", m[0]))), m[0], i);
 			}));
-			register(new OperatorInfo("arcsin", OperatorType.Func, max, so: Math.Asin, d: (i, m) =>
+			register(new OperatorInfo("arcsin", OperatorType.Func, max, so: Math.Asin, d: (i,o, m) =>
 			{
 
 
 				return mulID(OP("/", ONE, OP("sqrt", OP("-", ONE, OP("sq", m[0])))), m[0], i);
 
 			}));
-			register(new OperatorInfo("arccos", OperatorType.Func, max, so: Math.Acos, d: (i, m) =>
+			register(new OperatorInfo("arccos", OperatorType.Func, max, so: Math.Acos, d: (i,o, m) =>
 			{
 
 
 				return mulID(OP("/-", ONE, OP("sqrt", OP("-", ONE, OP("sq", m[0])))), m[0], i);
 
 			}));
-			register(new OperatorInfo("arctan", OperatorType.Func, max, so: Math.Atan, d: (i, m) =>
+			register(new OperatorInfo("arctan", OperatorType.Func, max, so: Math.Atan, d: (i,o, m) =>
 			{
 
 
@@ -274,25 +274,25 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo("arctanh", OperatorType.Func, max, so: Math.Atanh));
 			register(new OperatorInfo("arctan2", OperatorType.Func, max, so: Math.Atan2));
 			
-			register(new OperatorInfo("ln", OperatorType.Func, max, so: (OneElementOperator)Math.Log, d: (i, m) =>
+			register(new OperatorInfo("ln", OperatorType.Func, max, so: (OneElementOperator)Math.Log, d: (i,o, m) =>
 			{
 				return OP("*", OP("/", new NumberObject(1), m[0]), m[0].getDerivative(i));
 			}));
-			register(new OperatorInfo("asin", OperatorType.Func, max, so: Math.Asin, d: (i, m) =>
+			register(new OperatorInfo("asin", OperatorType.Func, max, so: Math.Asin, d: (i,o, m) =>
 			{
 
 
 				return mulID(OP("/", ONE, OP("sqrt", OP("-", ONE, OP("sq", m[0])))), m[0], i);
 
 			}));
-			register(new OperatorInfo("acos", OperatorType.Func, max, so: Math.Acos, d: (i, m) =>
+			register(new OperatorInfo("acos", OperatorType.Func, max, so: Math.Acos, d: (i,o, m) =>
 			{
 
 
 				return mulID(OP("/-", ONE, OP("sqrt", OP("-", ONE, OP("sq", m[0])))), m[0], i);
 
 			}));
-			register(new OperatorInfo("atan", OperatorType.Func, max, so: Math.Atan, d: (i, m) =>
+			register(new OperatorInfo("atan", OperatorType.Func, max, so: Math.Atan, d: (i,o, m) =>
 			{
 
 
@@ -300,7 +300,7 @@ namespace DVLib.LabDataHelper
 
 			}));
 
-			register(new OperatorInfo("abs", OperatorType.Func, max, so: Math.Abs, d: (i, m) => {
+			register(new OperatorInfo("abs", OperatorType.Func, max, so: Math.Abs, d: (i,o, m) => {
 				return mulID(OP("/", m[0], OP("abs", m[0])), m[0], i);
 			}));
 			register(new OperatorInfo("acosh", OperatorType.Func, max, so: Math.Acosh));
@@ -312,10 +312,10 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo("cosh", OperatorType.Func, max, so: Math.Cosh));
 			register(new OperatorInfo("tanh", OperatorType.Func, max, so: Math.Tanh));
 			register(new OperatorInfo("exp", OperatorType.Func, max, so: Math.Exp));
-			register(new OperatorInfo("sqrt", OperatorType.Func, max, so: Math.Sqrt, d: (i, m) => {
+			register(new OperatorInfo("sqrt", OperatorType.Func, max, so: Math.Sqrt, d: (i,o, m) => {
 				
 				return mulID(OP("*", HALF, OP("/", ONE, OP("sqrt", m[0]))), m[0], i); }));
-			register(new OperatorInfo("sq", OperatorType.Func, max, so: a => a * a,d: (i,m) => {
+			register(new OperatorInfo("sq", OperatorType.Func, max, so: a => a * a,d: (i, o, m) => {
 				return mulID(OP("*",TWO,  m[0]), m[0], i);
 		}));
 			register(new OperatorInfo("round", OperatorType.Func, max, so: Math.Round));
@@ -530,7 +530,12 @@ namespace DVLib.LabDataHelper
 
 			});
 		}
-
+		internal static MathObject DE(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager, ScanResult result)
+		{
+			var v =OperatorInfo.solveL(text, ois, infos, manager);
+			var mo = manager.GetObject(v.name, v.infos, result).getDerivative(0);
+			return mo;
+		}
 		static MathObject IF(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager, ScanResult result)
 		{
 		
@@ -841,7 +846,7 @@ namespace DVLib.LabDataHelper
 		}
 		public void registerMathFunc(string name, MathObject mathObject,int pm, string tag = "customize")
 		{ 
-		register(new OperatorInfo(name, OperatorType.Func, max, tag, mathObject.getValue, (i, m) =>
+		register(new OperatorInfo(name, OperatorType.Func, max, tag, mathObject.getValue, (i, o, m) =>
 		{
 			MathObject[] ms = new MathObject[pm];
 			for (int j = 0; j < pm; j++)
@@ -1305,6 +1310,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			var v=solveL(text, ois, infos, manager);
 			return new MathOperator(ois.operatorInfo,manager. GetObject(v.name,v.infos,result)).setDerivativeGetter(ois.operatorInfo.DerivativeGetter);
 		}
+
 
 		static MathObject VAR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager, ScanResult result)
 		{
@@ -2017,7 +2023,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		public override MathObject getDerivative(int index = 0)
 		{
 			if(getter!=null)
-			return getter(index, A);
+			return getter(index,this, A);
 			return base.getDerivative(index);
 		}
 
