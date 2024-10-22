@@ -222,13 +222,13 @@ namespace DVLib.LabDataHelper
 			}));
 			register(new OperatorInfo("dirac", OperatorType.Func, max, so: (a) => { if (a==0) return double.PositiveInfinity; return 0; }, d: (i,o, m) =>
 			{
-				return mulID(OP("'",OP("dirac")), m[0], i) ;
+				return mulID(OP("'", OP("dirac", m[0]),new NumberObject(1)), m[0], i) ;
 			}));
 
-			register(new OperatorInfo("'", OperatorType.Left, max - 1, "raw", (a) => a[0] ==0?double.NaN:0, (i, o, m) =>
+			register(new OperatorInfo("'", OperatorType.LeftRight, max - 1, "raw", (a) => a[0] ==0?double.NaN:0, (i, o, m) =>
 			{
-				return mulID(OP("'", o), m[0], i);
-			},                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              DE));
+				return mulID(OP("'", m[0],new NumberObject(m[1].getValue() + 1)), m[0].getElement());
+			},DE));
 
 			register(new OperatorInfo("IF", OperatorType.Func, max, so: (a, b, c) => { if (a > 0) return b; return c; }));
 			register(new OperatorInfo("sin", OperatorType.Func, max, so: Math.Sin, d: (i,o, m) =>
@@ -929,7 +929,7 @@ namespace DVLib.LabDataHelper
 			},"Method");
 		}
 
-		public MathObject Run(string text,bool runtime=false)
+		public MathObject Run(string text,bool simplify=false,bool runtime=false)
 		{
 
 			
@@ -946,12 +946,23 @@ namespace DVLib.LabDataHelper
 			if(r.containsType(OperatorType.RUNCODE))
 			{
 				pushRunTime();
-				var go = GetObject(text, info,r);
+				var go = GetObject(text, info, r) ;
+				if(simplify)
+				{
+					go = go.simplify(this);
+				}
 				popRunTime();
 				return go;
 			}
+			var v = GetObject(text, info, r);
+			if(simplify)
+				v=v.simplify(this);
+			return v;
+		}
 
-			return GetObject(text, info,r);
+		public MathObject RunAndSimplify(string name,bool rt=false)
+		{
+			return Run(name, true, rt);
 		}
 	
 		public override MathObject getBaseType(string s)
@@ -977,6 +988,7 @@ namespace DVLib.LabDataHelper
 	{
 		static internal SourceOperator toSourceOperator(this OneElementOperator OperatorInfo)
 		{
+
 			return data => OperatorInfo(data[0]);
 		}
 
@@ -1426,6 +1438,11 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		{
 			return mathObject == this;
 		}
+
+		public virtual MathObject getElement(int index = 0)
+		{
+			return this;
+		}
 		public virtual bool isNumber()
 		{
 			return false;
@@ -1433,6 +1450,11 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		public virtual bool isNumber(double value)
 		{
 			return false;
+		}
+
+		public virtual string ToStringWithAddtional(string addtional="")
+		{
+			return ToString();
 		}
 		internal virtual MathObject replaceVarible(int index,MathObject m)
 		{
@@ -1733,7 +1755,16 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		static MathOperator()
 		{
 			NAN = new MathOperator(a => double.NaN);
+			registerReplace("sum", (m, o, ms) =>
+			{
+				if(ms.Length==1)
+				{
+					return ms[0];
+				}
 
+				return o;
+
+			});
 			registerReplace("*", (m, o, ms) =>
 			{
 				var v1 = ms[0];
@@ -1857,6 +1888,11 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			A = a;
 			Operator = op;
 		}
+
+		public override MathObject getElement(int index = 0)
+		{
+			return A[index];
+		}
 		internal override MathObject clone()
 		{
 			MathOperator op = new MathOperator(Operator,operatorInfo, new MathObject[A.Length]);
@@ -1895,6 +1931,16 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 
 			return false;
 		}
+		public override MathObject simplify(MathObjectManager m)
+		{
+			MathOperator v = new MathOperator(operatorInfo,new MathObject[A.Length] );	
+			for(int i = 0;i<A.Length;i++)
+			{
+				v.A[i]=A[i].simplify(m);
+			}
+			var v2 = v.getSimplify(m);
+			return v2;
+		}
 		public override MathObject getSimplify(MathObjectManager m)
 		{
 
@@ -1912,7 +1958,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 					break;
 				}
 			}
-			if(allIsNumber)
+			if(allIsNumber&&A.Length>0)
 			{
 				return new NumberObject(Operator(doubles));
 			}
@@ -1925,12 +1971,25 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		}
 		public override string ToString()
 		{
+			return ToStringWithAddtional();
+		}
+		public override string ToStringWithAddtional(string addtional="")
+		{
+		
 			var t = operatorInfo.type;
+			var mark=operatorInfo.mark+addtional;
+			if(operatorInfo.mark=="'")
+			{
+				char[] s = new char[(int)A[1].getValue()];
+				s.AsSpan().Fill('\'');
+
+				return A[0].ToStringWithAddtional(new string(s));
+			}
 
 			StringBuilder stringBuilder = new StringBuilder();
 			if(t==OperatorType.Func)
 			{
-				stringBuilder.Append(operatorInfo.mark);
+				stringBuilder.Append(mark);
 				stringBuilder.Append("(");
 				for(int i = 0;i < A.Length;i++)
 				{
@@ -1946,13 +2005,13 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			{
 				stringBuilder.Append("(");
 				stringBuilder.Append(A[0].ToString());
-				stringBuilder.Append(operatorInfo.mark);
+				stringBuilder.Append(mark);
 				stringBuilder.Append(")");
 			}
 			else if (t == OperatorType.Right && A.Length > 0)
 			{
 				stringBuilder.Append("(");
-				stringBuilder.Append(operatorInfo.mark);	
+				stringBuilder.Append(mark);	
 				stringBuilder.Append(A[0].ToString());
 				stringBuilder.Append(")");
 			}
@@ -1961,7 +2020,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 				if(A.Length>1) {
 					stringBuilder.Append("(");
 					stringBuilder.Append(A[0].ToString());
-					stringBuilder.Append(operatorInfo.mark);
+					stringBuilder.Append(mark);
 					stringBuilder.Append(A[1].ToString());
 					stringBuilder.Append(")");
 				}
@@ -1972,14 +2031,14 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 				{
 					stringBuilder.Append("(");
 					stringBuilder.Append(A[0].ToString());
-					stringBuilder.Append(operatorInfo.mark);
+					stringBuilder.Append(mark);
 					stringBuilder.Append(A[1].ToString());
 					stringBuilder.Append(")");
 				}
 				else if(A.Length==1)
 				{
 					stringBuilder.Append("(");
-					stringBuilder.Append(operatorInfo.mark);
+					stringBuilder.Append(mark);
 					stringBuilder.Append(A[0].ToString());
 					stringBuilder.Append(")");
 				}
