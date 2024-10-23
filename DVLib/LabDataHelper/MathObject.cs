@@ -20,6 +20,7 @@ using System.Xml;
 using System.Diagnostics;
 using NewPhysics;
 using System.Diagnostics.CodeAnalysis;
+using SixLabors.ImageSharp;
 
 namespace DVLib.LabDataHelper
 {
@@ -269,9 +270,25 @@ namespace DVLib.LabDataHelper
 
 			}));
 
-			register(new OperatorInfo("arccosh", OperatorType.Func, max, so: Math.Acosh));
-			register(new OperatorInfo("arcsinh", OperatorType.Func, max, so: Math.Asinh));
-			register(new OperatorInfo("arctanh", OperatorType.Func, max, so: Math.Atanh));
+			register(new OperatorInfo("arccosh", OperatorType.Func, max, so: Math.Acosh, "raw", (i, o, m) =>
+			{
+
+				return mulID(OP("/", NumberObject.ONE, OP("sqrt", OP("+", OP("sq", m[0]), NumberObject.ONE))), m[0], i);
+
+			}));
+			register(new OperatorInfo("arcsinh", OperatorType.Func, max, so: Math.Asinh, "raw", (i, o, m) =>
+			{
+
+				return mulID(OP("/", NumberObject.ONE, OP("sqrt", OP("-", OP("sq", m[0]), NumberObject.ONE))), m[0], i);
+
+			}));
+			register(new OperatorInfo("arctanh", OperatorType.Func, max, so: Math.Atanh, "raw", (i, o, m) =>
+			{
+
+				return mulID(OP("/", NumberObject.ONE,  OP("-", NumberObject.ONE, OP("sq", m[0]))), m[0], i);
+
+			})); ;
+
 			register(new OperatorInfo("arctan2", OperatorType.Func, max, so: Math.Atan2));
 			
 			register(new OperatorInfo("ln", OperatorType.Func, max, so: (OneElementOperator)Math.Log, d: (i,o, m) =>
@@ -303,15 +320,31 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo("abs", OperatorType.Func, max, so: Math.Abs, d: (i,o, m) => {
 				return mulID(OP("/", m[0], OP("abs", m[0])), m[0], i);
 			}));
-			register(new OperatorInfo("acosh", OperatorType.Func, max, so: Math.Acosh));
-			register(new OperatorInfo("asinh", OperatorType.Func, max, so: Math.Asinh));
-			register(new OperatorInfo("atanh", OperatorType.Func, max, so: Math.Atanh));
+			register(new OperatorInfo("acosh", OperatorType.Func, max, so: Math.Acosh, "raw", (i, o, m) =>
+			{
+
+				return mulID(OP("/", NumberObject.ONE, OP("sqrt", OP("+", OP("sq", m[0]), NumberObject.ONE))), m[0], i);
+
+			}));
+			register(new OperatorInfo("asinh", OperatorType.Func, max, so: Math.Asinh, "raw", (i, o, m) =>
+			{
+
+				return mulID(OP("/", NumberObject.ONE, OP("sqrt", OP("-", OP("sq", m[0]), NumberObject.ONE))), m[0], i);
+
+			}));
+			register(new OperatorInfo("atanh", OperatorType.Func, max, so: Math.Atanh, "raw", (i, o, m) =>
+			{
+
+				return mulID(OP("/", NumberObject.ONE, OP("-", NumberObject.ONE, OP("sq", m[0]))), m[0], i);
+
+			})); ;
+
 			register(new OperatorInfo("atan2", OperatorType.Func, max, so: Math.Atan2));
 
 			register(new OperatorInfo("sinh", OperatorType.Func, max, so: Math.Sinh));
 			register(new OperatorInfo("cosh", OperatorType.Func, max, so: Math.Cosh));
 			register(new OperatorInfo("tanh", OperatorType.Func, max, so: Math.Tanh));
-			register(new OperatorInfo("exp", OperatorType.Func, max, so: Math.Exp));
+			register(new OperatorInfo("exp", OperatorType.Func, max, so: Math.Exp, "raw", (i, o, m) => { return mulID(OP("exp", m[0]), m[0], i); }));
 			register(new OperatorInfo("sqrt", OperatorType.Func, max, so: Math.Sqrt, d: (i,o, m) => {
 				
 				return mulID(OP("*", HALF, OP("/", ONE, OP("sqrt", m[0]))), m[0], i); }));
@@ -321,8 +354,14 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo("round", OperatorType.Func, max, so: Math.Round));
 			register(new OperatorInfo("max", OperatorType.Func, max, so: Math.Max));
 			register(new OperatorInfo("min", OperatorType.Func, max, so: Math.Min));
-			register(new OperatorInfo("random", OperatorType.Source, max, so: (double[] data) => random.NextDouble()));
-			register(new OperatorInfo("randInt", OperatorType.Func, max, so: (a, b) => random.Next((int)Math.Min(a, b), (int)Math.Max(a, b))));
+			register(new OperatorInfo("random", OperatorType.Source, max, so: (double[] data) => random.NextDouble(), d: (i, o, m) =>
+			{
+				return NumberObject.ZERO;
+			}));
+			register(new OperatorInfo("randInt", OperatorType.Func, max, (a, b) => random.Next((int)Math.Min(a, b), (int)Math.Max(a, b)),"raw", (i, o, m) =>
+			{
+				return NumberObject.ZERO;
+			}));
 			register(new OperatorInfo("pi", OperatorType.Number, max).setValue(Math.PI));
 			register(new OperatorInfo("rad", OperatorType.Func, max, so: (a) => { return a * Math.PI / 180; }));
 			register(new OperatorInfo("degree", OperatorType.Func, max, so: (a) => { return a * 180 / Math.PI; }));
