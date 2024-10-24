@@ -215,16 +215,16 @@ namespace Physics
 		}
 		public class mp_object2
 		{
-			functionmap jt = new functionmap(1920, 1080);
-			functionmap vt = new functionmap(1920, 1080);
-			functionmap at = new functionmap(1920, 1080);
-			functionmap jxt = new functionmap(1920, 1080);
-			functionmap vxt = new functionmap(1920, 1080);
-			functionmap axt = new functionmap(1920, 1080);
-			functionmap jyt = new functionmap(1920, 1080);
-			functionmap vyt = new functionmap(1920, 1080);
-			functionmap ayt = new functionmap(1920, 1080);
-			functionmap mt = new functionmap(1920, 1080);
+			Plot2D jt = new Plot2D(1920, 1080);
+			Plot2D vt = new Plot2D(1920, 1080);
+			Plot2D at = new Plot2D(1920, 1080);
+			Plot2D jxt = new Plot2D(1920, 1080);
+			Plot2D vxt = new Plot2D(1920, 1080);
+			Plot2D axt = new Plot2D(1920, 1080);
+			Plot2D jyt = new Plot2D(1920, 1080);
+			Plot2D vyt = new Plot2D(1920, 1080);
+			Plot2D ayt = new Plot2D(1920, 1080);
+			Plot2D mt = new Plot2D(1920, 1080);
 			vector2 f = new vector2();
 			world father;
 			vector2 P;

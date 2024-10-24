@@ -18,6 +18,7 @@ using vector2 = MathBase.Vector2;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Runtime.InteropServices;
+using System.Drawing;
 namespace Images
 {
 	public struct Color0
@@ -60,10 +61,10 @@ namespace Images
 	}
 	}
 	public delegate int win(int x);
-	public class Converter
+	public class BitmapConverter
 	{
 		bitmap Bitmap;
-		public Converter(bitmap bitmap)
+		public BitmapConverter(bitmap bitmap)
 		{
 			Bitmap = bitmap;
 		}
@@ -91,7 +92,7 @@ namespace Images
 
 	}
 
-	public static class ImageHelper
+	public static class DVImageHelper
 	{
 
 		public static byte[] readFile(string fileName)
@@ -243,13 +244,20 @@ namespace Images
 		public static bitmap fromImage(this Image<Bgra32> image)
 		{
 			bitmap bitmap=new bitmap(image.Width, image.Height);
-			Converter converter = new Converter(bitmap);
+			BitmapConverter converter = new BitmapConverter(bitmap);
 			image.ProcessPixelRows(converter.toImage);
 			return bitmap;
 		}
+		public static Image<Bgra32>  fromBitmap(this bitmap bm )
+		{
+			Image<Bgra32> image=new Image<Bgra32>(bm.Width, bm.Height);
+			BitmapConverter converter = new BitmapConverter(bm);
+			image.ProcessPixelRows(converter.toImage);
+			return image;
+		}
 
 
-	
+
 		static double min = 0.000001;
 
 		public static Vector2 getMassCenterWidth(this bitmap bitmap,int y, Channel channel = Channel.All, double rate = 0.98)
@@ -375,9 +383,9 @@ namespace Images
 			}
 			total = bitmap.Width * bitmap.Height;
 		}
-		public functionmap output(int w, int h,int min ,int max)
+		public Plot2D output(int w, int h,int min ,int max)
 		{
-			functionmap functionmap = new functionmap(w, h);
+			Plot2D functionmap = new Plot2D(w, h);
 			for (int i = min; i < max; i++)
 			{
 				functionmap.add(i, vs1[i]);
@@ -385,9 +393,9 @@ namespace Images
 			return functionmap;
 
 		}
-		public functionmap output(int w,int h)
+		public Plot2D output(int w,int h)
 		{
-			functionmap functionmap = new functionmap(w, h);
+			Plot2D functionmap = new Plot2D(w, h);
 			for(int i=0;i<max;i++)
 			{
 				functionmap.add(i, vs1[i]);
@@ -2529,7 +2537,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 					HWidth = image.Width/2;
 					HHeight = image.Height/2;
 					Data=new int[Width,Height];
-					image.ProcessPixelRows(new Converter(this).toBitmap);
+					image.ProcessPixelRows(new BitmapConverter(this).toBitmap);
 					image.Dispose();
 				}
 			}
@@ -2554,7 +2562,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 		public static implicit operator Image<Bgra32>(bitmap bitmap)
 		{
 			Image<Bgra32> image = new Image<Bgra32>(bitmap.Width, bitmap.Height);
-			image.ProcessPixelRows(new Converter(bitmap).toImage);
+			image.ProcessPixelRows(new BitmapConverter(bitmap).toImage);
 			return image;
 		}
 		public bitmap[] getRandomAreas(int count,int width,int height,int minWidth=1,int minHeight=1,int maxWidth=-1,int maxHeight=-1)
@@ -2968,6 +2976,45 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			return bp;
 		}
 
+		public unsafe void ToBitmap(byte* bitmap,int stride)
+		{
+				for (int i = 0; i < Height; i++)
+				{
+					for (int j = 0; j < Width; j++)
+					{
+						int c = Data[j, i];
+						bitmap[0] = (byte)(c & 0xff);
+						bitmap[1] = (byte)((c >> 8) & 0xff);
+						bitmap[2] = (byte)((c >> 16) & 0xff);
+						bitmap[3] = (byte)((c >> 24) & 0xff);
+						bitmap += 4;
+					}
+					bitmap += stride - Width * 4;
+				}
+		}
+
+		public System.Drawing.Rectangle GetRectangle()
+		{
+			return new System.Drawing.Rectangle(0, 0, Width, Height);
+		}
+		public unsafe static bitmap FromBitmap(byte* raw,int width,int height,int stride)
+		{
+
+			bitmap bitmap = new bitmap(width,height);
+			unsafe
+			{
+				for (int i = 0; i < height; i++)
+				{
+					for (int j = 0; j < width; j++)
+					{
+						bitmap.SetPixel(j, i, raw[3], raw[2], raw[1], raw[0]);
+						raw += 4;
+					}
+					raw += stride - width * 4;
+				}
+			}
+			return bitmap;
+		}
 		public int getGoodR(double x,double y)
 		{
 			Vector2i p1=new Vector2i((int)x,(int)y);
@@ -4690,7 +4737,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			return (s % 5).ToString();
 		}
 
-		public static Color createcolor(string code, int n)
+		public static SixLabors.ImageSharp.Color createcolor(string code, int n)
 		{
 			int a, r, g, b;
 			if (getint(code, 0, 10, n) > 8)
@@ -4707,7 +4754,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 				b = r;
 				a = getint(code, 0, 254, 4 * n - 3);
 			}
-			return Color.FromRgba((byte)r, (byte)g, (byte)b, (byte)a);
+			return SixLabors.ImageSharp.Color.FromRgba((byte)r, (byte)g, (byte)b, (byte)a);
 		}
 
 		public static int[] createint(string code, int min, int max, int number)

@@ -21,6 +21,7 @@ using System.Diagnostics;
 using NewPhysics;
 using System.Diagnostics.CodeAnalysis;
 using SixLabors.ImageSharp;
+using Images;
 
 namespace DVLib.LabDataHelper
 {
@@ -344,6 +345,7 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo("sinh", OperatorType.Func, max, so: Math.Sinh));
 			register(new OperatorInfo("cosh", OperatorType.Func, max, so: Math.Cosh));
 			register(new OperatorInfo("tanh", OperatorType.Func, max, so: Math.Tanh));
+
 			register(new OperatorInfo("exp", OperatorType.Func, max, so: Math.Exp, "raw", (i, o, m) => { return mulID(OP("exp", m[0]), m[0], i); }));
 			register(new OperatorInfo("sqrt", OperatorType.Func, max, so: Math.Sqrt, d: (i,o, m) => {
 				
@@ -1544,15 +1546,15 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		public abstract double getValue(params double[] ms);
 	}
 
-	public class LinearMap : MathObject
+	public class LerpFunction : MathObject
 	{
 		List<Vector2> RawData = new List<Vector2>();
 		int[] vector2sMap;
 		double refData;
 		int dData;
-		bool created = false;
+		bool updated = false;
 		int Size;
-		public LinearMap( int size):base(null)
+		public LerpFunction( int size=8):base(null)
 		{
 			this.Size = size;
 		}
@@ -1563,9 +1565,9 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			{
 				return double.NaN;
 			}
-			if(!created)
+			if(!updated)
 			{
-				CreateMap(Size);
+				Update(Size);
 			}
 			double v = ms[0];
 			int i = findIndexStart(v);
@@ -1593,19 +1595,36 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 
 		}
 
-		public LinearMap Clear()
+		public override LerpFunction getDerivative(int index = 0)
+		{
+			Vector2 temp;
+			List<Vector2> vector2s = new List<Vector2>();
+			if(!updated)
+			{
+				Order();
+			}
+			for(int i=1;i<RawData.Count;i++)
+			{
+				temp = RawData[i] - RawData[i - 1];
+				vector2s.Add(new Vector2((RawData[i].X + RawData[i-1].X)*0.5, temp.Y / temp.X ));
+			}
+			LerpFunction l=new LerpFunction(Size);
+			l.RawData = vector2s;
+			return l;
+		}
+		public LerpFunction Clear()
 		{
 			RawData.Clear();
-			created = false;
+			updated = false;
 			return this;
 		}
-		public LinearMap Add(params Vector2[] data )
+		public LerpFunction Add(params Vector2[] data )
 		{
 			foreach(Vector2 p in data)
 			{
 				RawData.Add(p);
 			}
-			created = false;
+			updated = false;
 			return this;
 		}
 
@@ -1614,17 +1633,23 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 			return p1.Y + (x -p1.X) / (p2.X -p1.X) * (p2.Y -p1.Y);
 
 		}
-		public void CreateMap(int AreaSize)
+
+		void Order()
+		{
+			var data = (from Vector2 d in RawData orderby d.X ascending select d).ToArray();
+			RawData.Clear();
+			foreach (var d in data)
+			{
+				RawData.Add(d);
+			}
+		}
+		public void Update(int AreaSize)
 		{
 			if(RawData.Count<2)
 				return;
 
-			var data = (from Vector2 d in RawData orderby d.X ascending select d).ToArray();
-			RawData.Clear();
-			foreach(var d in data)
-			{
-				RawData.Add(d);
-			}
+			Order();
+		
 			int count = RawData.Count / AreaSize;refData = RawData[0].X;
 			dData =(int) ((RawData.Last().X -refData)/count);
 			double min =refData+dData;
@@ -1642,9 +1667,18 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 				}
 			}
 			vector2sMap = list.ToArray();
-			created= true;
+			updated= true;
 		}
+		public Plot2D Plot(int w,int h)
+		{
+			Plot2D p2 = new Plot2D(w, h);
+			foreach(var d in RawData)
+			{
+				p2.add(d);
+			}
+			return p2;
 
+		}
 		int findIndexStart(double x)
 		{
 			double i = ((x - refData) / dData);
@@ -1683,6 +1717,8 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		{
 			valueOut = value;
 		}
+
+
     
 		public override double getValue(params double[] ms)
 		{
