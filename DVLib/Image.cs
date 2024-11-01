@@ -2246,11 +2246,11 @@ for (int j = (int)height - 1; j >= 0; j--)
 			int[,] C = bitmap.Data;
 
 			if(Bitcount==24)
+			{for (int j=(int)height-1;j>=0;j--)
 			{
-				for (int i = (int)(width - 1); i >=0 ; i--)
+				for (int i = 0; i <width ; i++)
 				{
-					for (int j=0;j<height;j++)
-			{
+					
             
 					byte[] color = BitConverter.GetBytes(C[i, j]);
 					stream.Write(color, 0, 3);
