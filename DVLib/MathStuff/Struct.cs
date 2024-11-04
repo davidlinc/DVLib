@@ -774,8 +774,41 @@ for (int i = 0; i < ll; i++)
 			return 0;
 	}
 
+		public void drawCircle(double radius,Vector2 position,T color)
+		{
+			Vector2 left = position - new Vector2(radius, 0);
+			Vector2 right = position + new Vector2(radius, 0);
+			double d = radius * 2;
+			double l;
+			int length;
+			int ix,iy=(int)position.Y;
+			int s, e;
+			for(double x=0; x<=d;x++)
+			{
+				ix = (int)(position.X-radius + x);
+				if(ix>=0&&ix<Width)
+				{
+                	l = Math.Sqrt(x * 2 * radius+0.0000001 - x*x);
+					s = (int)(iy - l);
+					s=Math.Max(s, 0);
+					e = (int)(iy+l);
+					e= Math.Min(e, Height-1);
+					length=e-s;
+					var v = getColumnSpan(ix);
+					for(int i = 0;i<length;i++)
+					{
+						v[s + i] = color;
+					}
+				}
+			
+
+			}
+
+		}
+
 	 public	 T getValue(int x, int y,T defauleV=default)
 		{
+			
 			if(x>0&&y>0&&x<Width&&y<Height)
 			{
 				return Data[x, y];

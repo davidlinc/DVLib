@@ -164,7 +164,30 @@ namespace DVLib.LabDataHelper
 			// 计算 R²
 			return 1 - (ssr / sst);
 		}
-	
+	/// <summary>
+	/// 矫正
+	/// </summary>
+	/// <param name="index"></param>
+	/// <param name="one">计算参考对应的理论值</param>	
+		public void calibrate(int index,DataConverter vaule,DataConverter refv)
+		{
+			try
+			{var d = dataSets[index];
+
+			    double realValue= d.getMean(vaule);
+				double goodRef = refv(realValue);
+				double refValue =goodRef- double.Parse(d.describe);
+				foreach (var v in dataSets)
+				{
+					v.describe = (double.Parse(v.describe)+refValue).ToString();
+				}
+			}
+			catch(Exception e)
+			{
+				DVOS.writeLine(e.ToString());
+			}
+			
+		}
 	public void changeDescribe(int index, string describe)
 		{
 			dataSets[index].describe = describe;

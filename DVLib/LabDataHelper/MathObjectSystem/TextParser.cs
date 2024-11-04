@@ -381,12 +381,39 @@ namespace DVLib.LabDataHelper
         bool canOver = true;
         public LevelGetter levelGetter { get; private set; } = new LevelGetter();
 
+
         public ObjectManager()
         {
             registerLG(levelGetter);
             registerDefault();
         }
 
+        public (string ,int ) getRecommend(string s)
+        {
+            var v = s.AsSpan();
+            int i = 0;
+            while(v.Length>0)
+            {
+                var v2 = getRecommend_(v);
+                if (v2 != null)
+                {
+                    return (v2,i);
+                }
+                v = v.Slice(1);
+                i++;
+            }
+            return (null,-1);
+        }
+
+        string getRecommend_(ReadOnlySpan<char> s)
+        {
+
+            if (s.Length > 0&& stringLic.TryGetValue(s[0], out HeadCharSet<T, InfoT, M> hs))
+            {
+                return hs.getRecommend(s);
+            }
+            return null;
+        }
 	
         public InfoT register(InfoT info)
         {
@@ -636,6 +663,30 @@ namespace DVLib.LabDataHelper
                 if (v != null)
                     v.Clear();
             }
+        }
+
+        public string getRecommend(ReadOnlySpan<char> s)
+        {
+            int index = s.Length - 1;
+            if(index>=0&&context.Length > index)
+            {
+                for(int i=index;i<context.Length; i++)
+                {
+                    if (context[i]!=null)
+                    {
+                foreach(var m in context[i])
+                {
+                    var ms = m.Key.AsSpan().Slice(0,s.Length);
+                    if(ms.SequenceEqual(s))
+                            {
+                                return m.Key;
+                            }
+                }
+                    }
+              
+                }
+            }
+            return null;
         }
         public bool tryRemoveKey(string key)
         {
