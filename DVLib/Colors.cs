@@ -17,7 +17,8 @@ namespace Images
 		public static readonly int Blue = unchecked((int)(0xff0000ff));
 		public static readonly int White = unchecked((int)(0xffffffff));
 		public static readonly int Alpha=unchecked((int)(0xff000000));
-
+		static Random  rand=new Random();
+		public static int Random { get { return (255, rand.Next(256), rand.Next(256), rand.Next(256)).ARGB2Int()  ; } }
 		public static Vector3 RGBToHSV(int c)
 		{
 			return RGBToHSV((c >> 16 )&255,(c>>8)&255,c&255);

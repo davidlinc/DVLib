@@ -74,7 +74,7 @@ namespace Images
 			for (int i = 0; i < a.Height; i++)
 			{
 				var s = MemoryMarshal.Cast<Bgra32, int>(a.GetRowSpan(i));
-				var b = Bitmap.getRowSpan(i);
+				var b = Bitmap.getColumnSpan(i);
 				s.CopyTo(b);
 			}
 		}
@@ -85,7 +85,7 @@ namespace Images
 			{
 				var s = MemoryMarshal.Cast<Bgra32, int>(a.GetRowSpan(i));
 			
-				var b = Bitmap.getRowSpan(i);
+				var b = Bitmap.getColumnSpan(i);
 				b.CopyTo(s);
 			}
 		}

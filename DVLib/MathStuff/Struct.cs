@@ -280,9 +280,9 @@ public class Map<T>
 		}
 
 
-		public Span<T> getRowSpan(int row)
+		public Span<T> getColumnSpan(int Column)
 		{
-			return getSpan().Slice(row*Width,Width);
+			return getSpan().Slice(Column * Height,Height);
 		}
 		public Span<T> getSpan()
 		{
@@ -294,148 +294,153 @@ public class Map<T>
 		public void drawTriangleNew(T color, Vector2 a1, Vector2 a2, Vector2 a3)
 		{
 
-			var r=from Vector2 v in new Vector2[]{ a1,a2,a3} orderby v.Y descending select v;
+			var r=from Vector2 v in new Vector2[]{ a1,a2,a3} orderby v.X descending select v;
 
-			var top=r.ElementAt(0);
+			var Right=r.ElementAt(0);
 			var mid=r.ElementAt(1);
-			var bottom=r.ElementAt(2);
-			Vector2 left, right;
-			if(top.Y==mid.Y)
+			var Left=r.ElementAt(2);
+			Vector2 Up, Down;
+			if(Right.X==mid.X)
 			{
-				if(top.X<mid.X)
+				if(Right.Y<mid.Y)
 				{
-					left=top; right=mid;
+					Up=Right; Down=mid;
 				}
-				else if(top.X==mid.X)
+				else if(Right.Y==mid.Y)
 				{
 					return;
 				}
 				else
 				{
-					left=mid;
-					right=top;
+					Up=mid;
+					Down=Right;
 				}
-				drawTriangleDown(color, bottom, left, right);
+				drawTriangleLeft_(color, Left, Up, Down);
 			}
-			else if(mid.Y==bottom.Y)
+			else if(mid.X==Left.X)
 			{
-				if(mid.X<bottom.X)
+				if(mid.Y<Left.Y)
 				{
-					left = mid;
-					right=bottom;
+					Up = mid;
+					Down=Left;
 				}
-				else if(mid.X==bottom.X)
+				else if(mid.Y==Left.Y)
 				{
 					return;
 				}
 				else
 				{
-					left = bottom;
-					right=mid;
+					Up = Left;
+					Down=mid;
 				}
-                drawTriangleUp(color, bottom, left, right);
+                drawTriangleRight_(color, Right, Up, Down);
             }
 			else
 			{
-				var other=bottom+(top-bottom)/(top.Y-bottom.Y)*(mid.Y-bottom.Y);
-				if(other.X<mid.X)
+				var other=Left+(Right-Left)/(Right.X-Left.X)*(mid.X-Left.X);
+				if(other.Y<mid.Y)
 				{
-					left = other;
-					right = mid;
+					Up = other;
+					Down = mid;
 				}
-				else if(other.X>mid.X)
+				else if(other.Y>mid.Y)
 				{
-					right = other;
-					left = mid;
+					Down = other;
+					Up = mid;
 				}
 				else
 				{
 					return;
 				}
-				drawTriangleUp(color,top, left, right);
-			    drawTriangleDown(color,bottom, left, right);
+				drawTriangleRight_(color,Right, Up, Down);
+			    drawTriangleLeft_(color,Left, Up, Down);
 			}
 
 		}
-        public void drawTriangleUp(T color, Vector2 up, Vector2 left, Vector2 right)
+        public void drawTriangleRight_(T color, Vector2 Right, Vector2 Up, Vector2 Down)
         {
-			double height = up.Y ;
-			double hl = height - left.Y;
-			var start = left;
-			var end = right;
-			var dLeft = (  up.X-left.X) / hl ;
-			var dRight = (up.X-right.X  ) / hl;
+			double width = Right.X ;
+			double wl = width - Up.X;
+			var start = Up;
+			var end = Down;
+			var dUp = ( Right.Y-Up.Y) / wl ;
+			var dDown = (Right.Y-Down.Y  ) / wl;
 			int startIndex, endIndex,l;
-			if(height>=Height)
+			if(width>=Width)
 			{
-				height = Height;
+				width = Width-1;
 			}
-			if(left.Y<0)
+			if(Up.Y<0)
 			{
-				start = new Vector2(-left.Y * dLeft+start.X, 0);
+				start = new Vector2(0,-Up.X * dUp+start.Y); 
+				end = new Vector2(0,-Up.X * dDown + end.Y);
 			}
-			for(int h=(int)(left.Y);h<height;h++)
+			for(int w=(int)(Up.X);w<=width;w++)
 			{
-				var span=getRowSpan(h);
-				startIndex= (int)start.X;
-				endIndex= (int)end.X;
+				var span=getColumnSpan(w);
+				startIndex= (int)start.Y;
+				endIndex= (int)end.Y;
 			
 				if(startIndex<0)
 				{
 					startIndex = 0;
 				}
-				if(endIndex>Width)
+				l = (int)Math.Round(end.Y - start.Y + 1);
+
+				if (startIndex + l > Height)
 				{
-					endIndex = Width;
-				}	
-				l = endIndex - startIndex;
-				if(l>0)
+					l = Height - startIndex;
+				}
+
+				if (l>0)
 				{
 					span.Slice(startIndex,l).Fill(color);
 				}
-				start=start.add(dLeft, 1);
-				end=end.add(dRight, 1);
+				start=start.add( 1,dUp);
+				end=end.add( 1,dDown);
 			}
         }
-        public void drawTriangleDown(T color, Vector2 up, Vector2 left, Vector2 right)
+        public void drawTriangleLeft_(T color, Vector2 Left, Vector2 Up, Vector2 Down)
         {
-            double height = up.Y;
-            double hl = left.Y-height  ;
-            var start = left;
-            var end = right;
-            var dLeft = (up.X- left.X ) / hl;
-            var dRight = ( up.X-right.X ) / hl;
-            int startIndex, endIndex, l;
-            if (height<0)
+            double width = Left.X;
+            double wl = Up.X-width  ;
+            var start = Up;
+            var end = Down;
+            var dUp = (Left.Y- Up.Y ) / wl;
+            var dDown = ( Left.Y-Down.Y ) / wl;
+            int startIndex, l;
+            if (width<0)
             {
-                height =0;
+                width =0;
             }
-            if (left.Y >=Height)
+            if (Up.X>=Width)
             {
-                start = new Vector2((left.Y-Height) * dLeft + start.X, Height);
-            }
-            for (int h = (int)(left.Y); h >= height; h--)
+                start = new Vector2(Width,(Up.X-Width) * dUp + start.Y);
+				end= new Vector2(Width, (Up.X - Width) * dDown + end.Y);
+			}
+            for (int w = (int)(Up.X); w >= width; w--)
             {
-                var span = getRowSpan(h);
-                startIndex = (int)start.X;
-                endIndex = (int)end.X;
+                var span = getColumnSpan(w);
+                startIndex = (int)start.Y;
 
                 if (startIndex < 0)
                 {
                     startIndex = 0;
                 }
-                if (endIndex > Width)
-                {
-                    endIndex = Width;
-                }
-                l = endIndex - startIndex;
-                if (l > 0)
+				l = (int)Math.Round(end.Y - start.Y+1);
+
+				if(startIndex+l>Height)
+				{
+					l=Height-startIndex;
+				}
+
+				if (l > 0)
                 {
                     span.Slice(startIndex, l).Fill(color);
                 }
 
-              start=  start.add(dLeft, -1);
-             end=   end.add(dRight, -1);
+              start=  start.add( -1,dUp);
+              end=   end.add( -1,dDown);
             }
         }
 
@@ -713,12 +718,12 @@ for (int i = 0; i < ll; i++)
 	public T[] GetColumn(int index)
 	{
 
-			return getRowSpan(index).ToArray();
+			return getColumnSpan(index).ToArray();
 		}
 	public int SetColumn(int index, T[] src)
 	{
 
-			var a = getRowSpan(index);
+			var a = getColumnSpan(index);
 			Span<T> span = src;
 			span.CopyTo(a);
 			return 0;
@@ -756,7 +761,10 @@ for (int i = 0; i < ll; i++)
 		});
 		return r;
 	}
-	public int SetRow(int index, T[] src)
+
+	
+
+		public int SetRow(int index, T[] src)
 	{
 			int min = Math.Min(Width, src.Length);
 			for (int i = 0; i < min; i++)
@@ -765,7 +773,16 @@ for (int i = 0; i < ll; i++)
 			}
 			return 0;
 	}
-}
+
+	 public	 T getValue(int x, int y,T defauleV=default)
+		{
+			if(x>0&&y>0&&x<Width&&y<Height)
+			{
+				return Data[x, y];
+			}
+			return defauleV;
+		}
+	}
 
 /// <summary>
 /// 用于遍历的的函数（委托）

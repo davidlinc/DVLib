@@ -16,11 +16,12 @@ using ScanSet = System.ValueTuple<string,System.Collections.Generic.List<DVLib.L
 using DVLib.LabDataHelper.MathObjectSystem;
 using System.Runtime.Intrinsics.X86;
 using System.Xml;
-
+using System;
 using System.Diagnostics;
 using NewPhysics;
 using System.Diagnostics.CodeAnalysis;
 using SixLabors.ImageSharp;
+
 using Images;
 
 namespace DVLib.LabDataHelper
@@ -235,6 +236,7 @@ namespace DVLib.LabDataHelper
 			register(new OperatorInfo("IF", OperatorType.Func, max, so: (a, b, c) => { if (a > 0) return b; return c; }));
 			register(new OperatorInfo("sin", OperatorType.Func, max, so: Math.Sin, d: (i,o, m) =>
 			{
+			
 
 				return OP("*", OP("cos", m[0]), m[0].getDerivative(i));
 
