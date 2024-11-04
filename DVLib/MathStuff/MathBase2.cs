@@ -925,10 +925,12 @@ namespace MathBase
     {
         public readonly double X;
         public readonly double Y;
-        public static Vector2 Xaxis = new Vector2(1, 0);
-        public static Vector2 Yaxis = new Vector2(0, 1);
-      
-        public Vector2i Vector2i { get { return new Vector2i((int)X, (int)Y); } } 
+        public static readonly  Vector2 Xaxis  = new Vector2(1, 0);
+        public static readonly Vector2 Yaxis  = new Vector2(0, 1);
+
+		public static readonly Vector2 One = new Vector2(1,1);
+		public static readonly Vector2 Zero  = new Vector2(0, 0);
+		public Vector2i Vector2i { get { return new Vector2i((int)X, (int)Y); } } 
         public static Vector2 operator +(Vector2 a, Vector2 b)
         {
             return new Vector2(a.X + b.X, a.Y + b.Y);
@@ -945,7 +947,17 @@ namespace MathBase
         {
             return new Vector2(a * b.X, a * b.Y);
         }
-        public static Vector2 operator *(Vector2 b, double a)
+        /// <summary>
+        /// 标量乘法
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+		public static Vector2 operator *(Vector2 a, Vector2 b)
+		{
+			return new Vector2(a.X * b.X, a.Y * b.Y);
+		}
+		public static Vector2 operator *(Vector2 b, double a)
         {
             return new Vector2(a * b.X, a * b.Y);
         }
@@ -1142,10 +1154,10 @@ namespace MathBase
             return X * pB.Y - Y * pB.X;
 		}
 	}
-    public class Triangle2D:ICopyObject<Triangle2D>
+    public struct Triangle2D:ICopyObject<Triangle2D>
     {
         public static readonly double ONETHREE = 1.0 / 3;
-     public Vector2 p1 { get; private set; }
+        public Vector2 p1 { get; private set; } = new Vector2(Double.NaN);
         public Vector2 p2{ get; private set; }
         public Vector2 p3 { get; private set; }
     Vector2 position;
@@ -1157,13 +1169,17 @@ namespace MathBase
             position = p1.add(p2.add(p3)).scale(ONETHREE);
         }
 
+        
 	public	Triangle2D copy()
 		{
             Triangle2D d2 = new Triangle2D(p1, p2,p3);
             d2.position = position;
             return d2;
 		}
-
+        public bool isEmpty()
+        {
+            return double.IsNaN(p1.X);
+        }
      public   bool IsIn( Vector2 pointP)
     {
         Vector2 PA = p1-(pointP);

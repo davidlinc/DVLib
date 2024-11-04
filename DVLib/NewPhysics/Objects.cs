@@ -1103,7 +1103,7 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
             t.miny = miny;
             t.position = position;
             t.direction = direction;
-            if (triangle2D != null)
+            if (triangle2D .isEmpty())
             {
                 t.triangle2D = triangle2D.copy();
             }
