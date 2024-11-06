@@ -53,8 +53,19 @@ namespace DVOSLib
 			}
 		}
 
-		void grow()
+		public void ensureCapcity(int size)
 		{
+			if(Capcity<size)
+			{
+				grow(Capcity - size);
+			}
+		}
+		void grow(int n=0)
+		{
+			if(n>0)
+			{
+				Capcity += n;
+			}
 			Capcity *= 2;
 			byte[] bytes = new byte[Capcity];
 			Array.Copy(this.bytes, bytes, Length);

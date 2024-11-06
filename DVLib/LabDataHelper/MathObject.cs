@@ -52,7 +52,7 @@ namespace DVLib.LabDataHelper
 		static NumberObject HALF = new NumberObject(0.5);
 
 		static NumberObject TWO = new NumberObject(2);
-		StringDictionary<(string, string)> toReplace = new StringDictionary<(string, string)>();
+		StringDictionary<(string, string),SCD> toReplace = new StringDictionary<(string, string),SCD>();
 		internal static MathObject error = new NumberObject(double.NaN);
 		internal static MathObject trueO = new NumberObject(1);
 		internal static MathObject falseO = new NumberObject(0);
@@ -646,8 +646,16 @@ namespace DVLib.LabDataHelper
 		{
 			var v=OperatorInfo.solveLR(text, ois, infos, manager);
 
-			
-			if (v[0].name.isFuncName())
+			return new RuntimeMathObject(
+
+				(b) =>
+				{
+					if(manager.isChanged(result.id))
+					{
+						infos.Clear();
+					result=	manager.ScanForOperators(ref text, infos);
+					}
+		    if (v[0].name.isFuncName())
             {
 		
 				ReadOnlySpan<char> funcname = v[0].name.AsSpan();
@@ -732,10 +740,25 @@ namespace DVLib.LabDataHelper
 				{
 					MathObject m = manager.GetObject(v[1].name, v[1].infos,result);
 					r = m.getValue();
-					manager.registerNumber(v[0].name, r,"runtime");
+					MathObject m0 = manager.GetObject(v[0].name, v[0].infos,result);
+					if (m0 is NumberObject)
+					{
+						((NumberObject)m0).value = r;
+					}
+					else
+					{
+                     manager.registerNumber(v[0].name, r,"runtime");
+					}
+					
 				}
 				return new NumberObject(r);
 			}
+					return trueO;
+				}
+				
+				);
+			
+	
 			return trueO;
 		}
 
@@ -1226,7 +1249,7 @@ namespace DVLib.LabDataHelper
 		internal bool Random { get; private set; } = false;
 		internal DerivativeGetter DerivativeGetter { get; private set; }
 		internal static OperatorInfo info=new OperatorInfo("Empty",OperatorType.Func,0);
-		internal double value ;
+		internal NumberObject value=new NumberObject(0) ;
 		//internal int pmSize { get; private set; }
 		public OperatorInfo()
 		{
@@ -1285,7 +1308,7 @@ namespace DVLib.LabDataHelper
 		}
 		public OperatorInfo setValue(double size)
 		{
-			value = size;
+			value.value = size;
 			return this;
 		}
 		public OperatorInfo setReverse()
@@ -1373,7 +1396,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 		}
 		static MathObject NUM(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager, ScanResult result)
 		{
-			return new NumberObject(ois.operatorInfo.value);
+			return ois.operatorInfo.value;
 		}
 		static	MathObject RLOR(string text, OperatorScanInfo ois, List<OperatorScanInfo> infos, MathObjectManager manager, ScanResult result)
 		{
@@ -2252,7 +2275,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 	
 	public class NumberObject:MathObject
 	{
-		double value;
+		internal double value;
 		public static readonly NumberObject ZERO = new NumberObject(0);
 		public static readonly NumberObject ONE = new NumberObject(1);
 		public static readonly NumberObject HALF = new NumberObject(0.5);
@@ -2262,7 +2285,7 @@ static	MathObject R(string text, OperatorScanInfo ois, List<OperatorScanInfo> in
 
 		public NumberObject(OperatorInfo info):base(info)
 		{
-			this.value = info.value;
+			this.value = info.value.value;
 		}
 		public NumberObject(double v) : base(OperatorInfo.info)
 		{

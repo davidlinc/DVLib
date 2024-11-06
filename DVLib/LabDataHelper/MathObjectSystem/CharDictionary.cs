@@ -7,20 +7,25 @@ using System.Threading.Tasks;
 
 namespace DVLib.LabDataHelper.MathObjectSystem
 {
-	public class StringDictionary<T>
+
+	public class SCD:CharDictionary<(string,string),SCD>
 	{
-		Dictionary<char, CharDictionary<T>> valuePairs = new Dictionary<char, CharDictionary<T>>();
+
+	}
+	public class StringDictionary<T,D>where D :CharDictionary<T,D>,new()
+	{
+		Dictionary<char, D> valuePairs = new Dictionary<char, D>();
 
 		public void Add(string  s,T value)
 		{
 			char head = s[0];
-			if(valuePairs.TryGetValue(head,out CharDictionary<T> c))
+			if(valuePairs.TryGetValue(head,out D c))
 			{
 				c.Add(s, value);
 			}
 			else
 			{
-				CharDictionary<T> cd = new CharDictionary<T>(head);
+				D cd = new D().setHead(head);
 				cd.Add(s, value);
 				valuePairs.Add(head, cd);
 			}
@@ -29,26 +34,44 @@ namespace DVLib.LabDataHelper.MathObjectSystem
 		public bool match(string name,out T value,int head=0)
 		{
 		
-			if (valuePairs.TryGetValue(name[head],out CharDictionary<T> cd))
+			if (valuePairs.TryGetValue(name[head],out D cd))
 			{
 				if (cd.match(name.AsSpan(head),out value))
 				{
 					return true;
 				}
 			}
+
+
+			
+
 			value = default(T);
 			return false;
 		}
 	
+
 	}
 
-	public class CharDictionary<T>
+	public class CharDictionary<T,D>where D :CharDictionary<T,D>
 	{
 		internal char head;
 		internal int maxLength;
 		internal int capacity = 8;
 		internal Dictionary<string, T>[] context;
 		
+
+		public CharDictionary()
+		{
+
+			this.maxLength = 0;
+			this.context = new Dictionary<string, T>[capacity];
+		}
+
+		public D setHead(char head)
+		{
+			this.head = head;
+			return (D)this;
+		}
 
 		public CharDictionary(char head)
 		{
