@@ -8,24 +8,30 @@ using System.Threading.Tasks;
 namespace DVLib.LabDataHelper.MathObjectSystem
 {
 
-	public class SCD:CharDictionary<(string,string),SCD>
-	{
+	
 
-	}
-	public class StringDictionary<T,D>where D :CharDictionary<T,D>,new()
+
+	public class CharDictionary<T>:CharDictionary_<T, CharDictionary<T>>
 	{
-		Dictionary<char, D> valuePairs = new Dictionary<char, D>();
+		public CharDictionary(char head):base() {
+		setHead(head);
+		}
+	}
+
+	public class StringDictionary<T>
+	{
+		Dictionary<char, CharDictionary<T>> valuePairs = new Dictionary<char, CharDictionary<T>>();
 
 		public void Add(string  s,T value)
 		{
 			char head = s[0];
-			if(valuePairs.TryGetValue(head,out D c))
+			if(valuePairs.TryGetValue(head,out CharDictionary<T> c))
 			{
 				c.Add(s, value);
 			}
 			else
 			{
-				D cd = new D().setHead(head);
+				CharDictionary<T> cd = new CharDictionary<T>(head).setHead(head);
 				cd.Add(s, value);
 				valuePairs.Add(head, cd);
 			}
@@ -34,7 +40,7 @@ namespace DVLib.LabDataHelper.MathObjectSystem
 		public bool match(string name,out T value,int head=0)
 		{
 		
-			if (valuePairs.TryGetValue(name[head],out D cd))
+			if (valuePairs.TryGetValue(name[head],out CharDictionary<T> cd))
 			{
 				if (cd.match(name.AsSpan(head),out value))
 				{
@@ -52,7 +58,7 @@ namespace DVLib.LabDataHelper.MathObjectSystem
 
 	}
 
-	public class CharDictionary<T,D>where D :CharDictionary<T,D>
+	public class CharDictionary_<T,D>where D :CharDictionary_<T,D>
 	{
 		internal char head;
 		internal int maxLength;
@@ -60,7 +66,7 @@ namespace DVLib.LabDataHelper.MathObjectSystem
 		internal Dictionary<string, T>[] context;
 		
 
-		public CharDictionary()
+		public CharDictionary_()
 		{
 
 			this.maxLength = 0;
@@ -73,7 +79,7 @@ namespace DVLib.LabDataHelper.MathObjectSystem
 			return (D)this;
 		}
 
-		public CharDictionary(char head)
+		public CharDictionary_(char head)
 		{
 			this.head = head;
 			this.maxLength = 0;

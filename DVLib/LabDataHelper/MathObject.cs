@@ -52,7 +52,7 @@ namespace DVLib.LabDataHelper
 		static NumberObject HALF = new NumberObject(0.5);
 
 		static NumberObject TWO = new NumberObject(2);
-		StringDictionary<(string, string),SCD> toReplace = new StringDictionary<(string, string),SCD>();
+		StringDictionary<(string, string)> toReplace = new StringDictionary<(string, string)>();
 		internal static MathObject error = new NumberObject(double.NaN);
 		internal static MathObject trueO = new NumberObject(1);
 		internal static MathObject falseO = new NumberObject(0);

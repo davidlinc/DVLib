@@ -649,7 +649,7 @@ namespace DVLib.LabDataHelper
             return r;
         }
     }
-    public class HeadCharSet<T,InfoT,M>:CharDictionary<InfoT,HeadCharSet<T, InfoT, M>> where InfoT:ObjectInfo<T,InfoT,M>,new() where M:ObjectManager<T,InfoT,M>
+    public class HeadCharSet<T,InfoT,M>:CharDictionary<InfoT> where InfoT:ObjectInfo<T,InfoT,M>,new() where M:ObjectManager<T,InfoT,M>
     {
       
 
