@@ -23,12 +23,20 @@ namespace DVLib.LabDataHelper
 		public string describe { get; internal set; }
 		internal List<double> data=new List<double>();
 		public int Count { get { return data.Count; } }
-		public DataSet(string name="New Data",string describe="",int capcity=100)
+		public DataSet(string name="New Data",string describe="")
 		{
 			this.name=name;
 			this.describe=describe;
 		}
 
+		public DataSet getClone()
+		{
+			DataSet clone = new DataSet();
+			clone.name=name;
+			clone.describe=describe;
+			clone.data=data.ToList();
+			return clone;
+		}
 		public double this[int x]
 		{
 			get { return data[x]; }

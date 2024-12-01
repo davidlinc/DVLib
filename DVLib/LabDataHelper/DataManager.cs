@@ -121,7 +121,21 @@ namespace DVLib.LabDataHelper
 			}
 
 		}
-		public double[] getDataFromDescribe(int length,DataConverter converter=null,bool refZero=true)
+
+		public static DataManager loadFile(string path)
+		{
+			DataManager d=new DataManager("");
+			d.load(path);
+			return d;
+		}
+		public void merge(IEnumerable<DataSet> data)
+		{
+			foreach (DataSet dataSet in data) {
+
+				dataSets.Add(dataSet.getClone());
+			}
+		}
+		public double[] getDataFromDescribe(int length,DataConverter converter=null)
 		{
 			if(converter==null)
 			{
@@ -130,17 +144,12 @@ namespace DVLib.LabDataHelper
 
 			length=Math.Min(Count, length);
 			double[] doubles = new double[length];
-			double rz = 0;
-			if(refZero)
-			{
-				rz = double.Parse(dataSets[0].describe);
-
-            }
+	
 			for(int i = 0; i < length; i++)
 			{
 				try
 				{
-					doubles[i] =converter( double.Parse(dataSets[i].describe)-rz);
+					doubles[i] =converter( double.Parse(dataSets[i].describe));
 				}
 				catch
 				{
