@@ -37,12 +37,12 @@ namespace DVLib.LabDataHelper.MathObjectSystem
 			}
 		}
 
-		public bool match(string name,out T value,int head=0)
+		public bool match(string name,out T value,out string key,int head=0)
 		{
 		
 			if (valuePairs.TryGetValue(name[head],out CharDictionary<T> cd))
 			{
-				if (cd.match(name.AsSpan(head),out value))
+				if (cd.match(name.AsSpan(head),out value,out key))
 				{
 					return true;
 				}
@@ -52,6 +52,7 @@ namespace DVLib.LabDataHelper.MathObjectSystem
 			
 
 			value = default(T);
+			key = null;
 			return false;
 		}
 	
@@ -161,7 +162,7 @@ namespace DVLib.LabDataHelper.MathObjectSystem
 			return getDefault();
 		}
 
-		public bool match(ReadOnlySpan<char> input,out T oi)
+		public bool match(ReadOnlySpan<char> input,out T oi,out string s)
 		{
 			int indexMax = Math.Min(maxLength, input.Length) - 1;
 			for (int i = indexMax; i >= 0; i--)
@@ -169,7 +170,8 @@ namespace DVLib.LabDataHelper.MathObjectSystem
 				var v = context[i];
 				if (v != null)
 				{
-					if (v.TryGetValue(input.Slice(0, i + 1).ToString(), out oi))
+					s = input.Slice(0, i + 1).ToString();
+					if (v.TryGetValue(s, out oi))
 					{
 						return true;
 					}
@@ -177,6 +179,7 @@ namespace DVLib.LabDataHelper.MathObjectSystem
 				}
 			}
 			oi = getDefault();
+			s = null;
 			return false;
 		}
 	}

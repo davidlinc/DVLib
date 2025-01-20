@@ -120,7 +120,6 @@ namespace DVLib.LabDataHelper
         public int priority { get; internal set; }
         public char dot { get; internal set; } = ',';
         public bool reverse { get; internal set; }
-        public OperatorType type { get; internal set; }
         public Factory<T,S,M> factory { get; internal set; }
 
 
@@ -128,12 +127,11 @@ namespace DVLib.LabDataHelper
         {
 
         }
-        public ObjectInfo(string mark, OperatorType type, int priority, Factory<T,S,M> factory=null,string tag = "raw")
+        public ObjectInfo(string mark, int priority, Factory<T,S,M> factory=null,string tag = "raw")
         {
             this.tag = tag;
             this.priority = priority;
             this.mark = mark;
-            this.type = type;
             this.factory = factory;
         }
 
@@ -145,7 +143,6 @@ namespace DVLib.LabDataHelper
             dot = info.dot;
             reverse = info.reverse;
             factory = info.factory;
-            type= info.type;    
             return (S)this;
         }
 
@@ -246,7 +243,7 @@ namespace DVLib.LabDataHelper
             return new CodeBlockInfo<T, I, M>(null);
 			
 		}
-		public  static (string name, List<ScanInfo<T, I, M>> infos)[] solveFunc<T, I, M>(string text, ScanInfo<T, I, M> ois, List<ScanInfo<T, I, M>> infos, MathObjectManager manager) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
+		public  static (string name, List<ScanInfo<T, I, M>> infos)[] solveFunc<T, I, M>(string text, ScanInfo<T, I, M> ois, List<ScanInfo<T, I, M>> infos, M manager) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
 		{
 			int r = ois.operatorInfo.mark.Length;
 			if (text.Length <= r)
@@ -320,7 +317,7 @@ namespace DVLib.LabDataHelper
 		
 		}
 
-		public static (string name, List<ScanInfo<T,I,M>> infos)[] solveLR<T,I,M>(string text, ScanInfo<T,I,M> ois, List<ScanInfo<T,I,M>> infos, MathObjectManager manager)where I:ObjectInfo<T,I,M>,new() where M:ObjectManager<T,I,M>
+		public static (string name, List<ScanInfo<T,I,M>> infos)[] solveLR<T,I,M>(string text, ScanInfo<T,I,M> ois, List<ScanInfo<T,I,M>> infos, M manager)where I:ObjectInfo<T,I,M>,new() where M:ObjectManager<T,I,M>
 		{
 			List<ScanInfo<T, I, M>> left = new List<ScanInfo<T, I, M>>();
 			List<ScanInfo<T, I, M>> right = new List<ScanInfo<T, I, M>>();
@@ -354,7 +351,7 @@ namespace DVLib.LabDataHelper
 			}
 			return (text.Substring(0, l), left);
 		}
-		public static (string name, List<ScanInfo<T, I, M>> infos) solveR<T, I, M>(string text, ScanInfo<T, I, M> ois, List<ScanInfo<T, I, M>> infos, MathObjectManager manager) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
+		public static (string name, List<ScanInfo<T, I, M>> infos) solveR<T, I, M>(string text, ScanInfo<T, I, M> ois, List<ScanInfo<T, I, M>> infos, M manager) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
 		{
 			List<ScanInfo<T, I, M>> right = new List<ScanInfo<T, I, M>>();
 
@@ -378,17 +375,21 @@ namespace DVLib.LabDataHelper
      
 
 		public int maxPriority { get; private set; } = 0;
-        static Dictionary<char, HeadCharSet<T,InfoT,M>> stringLic = new Dictionary<char, HeadCharSet<T, InfoT,M>>();
+        Dictionary<char, HeadCharSet<T,InfoT,M>> stringLic = new Dictionary<char, HeadCharSet<T, InfoT,M>>();
+        Stack<Dictionary<char, HeadCharSet<T, InfoT, M>>> stack = new Stack<Dictionary<char, HeadCharSet<T, InfoT, M>>>();
         bool canOver = true;
         public LevelGetter levelGetter { get; private set; } = new LevelGetter();
-
+        internal int ObjectDepth = 0;
 
         public ObjectManager()
         {
             registerLG(levelGetter);
             registerDefault();
         }
-
+        public void resetDepth()
+        {
+            ObjectDepth = 0;
+        }
         public (string ,int ) getRecommend(string s)
         {
             var v = s.AsSpan();
@@ -416,7 +417,28 @@ namespace DVLib.LabDataHelper
             return null;
         }
 	
-        public InfoT register(InfoT info)
+        internal void pushStack()
+        {
+            stack.Push(new Dictionary<char, HeadCharSet<T, InfoT, M>>());
+        }
+        internal bool  popStack(out Dictionary<char, HeadCharSet<T, InfoT, M>> result)
+        {
+            if(stack.TryPop(out result))
+            {
+                return true;
+            }
+            return false;
+        }
+		internal bool peekStack(out Dictionary<char, HeadCharSet<T, InfoT, M>> result)
+		{
+			if (stack.TryPeek(out result))
+			{
+				return true;
+			}
+			return false;
+		}
+
+		public InfoT register(InfoT info)
         {
 
 
@@ -439,7 +461,29 @@ namespace DVLib.LabDataHelper
             }
             return null;
         }
-        public virtual void registerLG(LevelGetter getter)
+
+		public InfoT registerInStack(InfoT info)
+		{
+			string mk = info.mark;
+			char head = mk[0];
+			HeadCharSet<T, InfoT, M> hc;
+            if(peekStack(out var s))
+            {
+	        if (s.TryGetValue(head, out hc))
+			{
+				return hc.Add(info);
+			}
+			else
+			{
+				hc = new HeadCharSet<T, InfoT, M>(head);
+				hc.Add(info);
+				s.Add(head, hc);
+			}
+            }
+			return null;
+		}
+
+		public virtual void registerLG(LevelGetter getter)
         {
 
         }
@@ -539,8 +583,9 @@ namespace DVLib.LabDataHelper
   
 
      
-        public virtual T  GetObject(string text, List<ScanInfo<T,InfoT,M>> infos,ScanResult result)
+        internal virtual T  GetObject(string text, List<ScanInfo<T,InfoT,M>> infos,ScanResult result)
         {
+            ObjectDepth++;
             int t = Helper.clean(ref text);
             List<ScanInfo<T, InfoT, M>> infos_ = new List<ScanInfo<T, InfoT, M>>();
             foreach (var info in infos) {
@@ -587,17 +632,23 @@ namespace DVLib.LabDataHelper
 
                 var v = ois.operatorInfo.factory(text, ois, infos, (M)this,result);
                 onCreated(v, ois.operatorInfo);
+
+                ObjectDepth--;
                 return v;
             }
             else
             {
                 try
-                {
-                    return getBaseType(text);
+				{
+					
+                    var v = getBaseType(text);ObjectDepth--;
+					return v;
                 }
                 catch
-                {
-                    return getErrorType();
+				{
+                    var v = getErrorType();
+					ObjectDepth--;
+					return v;
                 }
             }
             return getErrorType();
@@ -615,7 +666,6 @@ namespace DVLib.LabDataHelper
         public ScanResult ScanForOperators(ref string text, List<ScanInfo<T,InfoT,M>> list)
         {
             ScanResult r = new ScanResult(ID);
-            bool hasCode=false;
             text=formalizeCode(text);
             ReadOnlySpan<char> text_ = text.AsSpan();
         
@@ -624,26 +674,43 @@ namespace DVLib.LabDataHelper
             char c;
             HeadCharSet<T,InfoT,M> hs;
             InfoT info;
+            int yhc = 0;
             for (int i = 0; i < text_.Length; i++)
             {
                 c = text_[i];
-                if (stringLic.TryGetValue(c, out hs))
+                if(c=='"')
                 {
+                    yhc++;
+                }
+                if(yhc%2==0)
+                {
+                    
+                    if(peekStack(out var d)&&d.TryGetValue(c, out hs)&&(info = hs.Match(text_.Slice(i)))!=null)
+                    {
+							
+
+								osi = new ScanInfo<T, InfoT, M>(i, level, info);
+								list.Add(osi);
+								i += info.mark.Length - 1;
+								r.add(info.mark);
+					}
+                    else if (stringLic.TryGetValue(c, out hs))
+                    {
                     info = hs.Match(text_.Slice(i));
                     if (info != null)
                     {
-                        if(!hasCode&&info.type==OperatorType.RUNCODE)
-                        {
-                            hasCode = true;
-                        }
+              
                         osi = new ScanInfo<T,InfoT,M>(i, level, info);
                         list.Add(osi);
                         i += info.mark.Length - 1;
-                        r.add(info.type);
                         r.add(info.mark);
                     }
 
+                    }
                 }
+               
+
+
                 level += levelGetter.getLevel(c);
             }
             return r;

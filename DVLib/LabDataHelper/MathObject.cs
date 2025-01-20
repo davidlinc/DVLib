@@ -423,7 +423,7 @@ namespace DVLib.LabDataHelper
 				v = ss[i];
 				if(v!=' '&&v!='\n')
 				{
-					if(toReplace.match(s,out var pair,i))
+					if(toReplace.match(s,out var pair,out var st,i))
 					{
 						SB.Append(pair.Item2);
 						i += pair.Item1.Length - 1;
@@ -1250,6 +1250,7 @@ namespace DVLib.LabDataHelper
 		internal DerivativeGetter DerivativeGetter { get; private set; }
 		internal static OperatorInfo info=new OperatorInfo("Empty",OperatorType.Func,0);
 		internal NumberObject value=new NumberObject(0) ;
+		public OperatorType type { get; internal set; }
 		//internal int pmSize { get; private set; }
 		public OperatorInfo()
 		{
