@@ -453,13 +453,13 @@ namespace MathBase
         {
             return new Vector3i(-a.x, -a.y, -a.z);
         }
-        public static implicit operator Vector3i(Color0 color)
+        public static implicit operator Vector3i(Color32 color)
         {
-            return new Vector3i(color.R, color.G, color.B);
+            return new Vector3i(color.r, color.g, color.b);
         }
-        public static implicit operator Color0(Vector3i color)
+        public static implicit operator Color32(Vector3i color)
         {
-            return new Color0((int)color.x, (int)color.y, (int)color.z);
+            return new Color32((int)color.x, (int)color.y, (int)color.z);
         }
         public double length()
         {
@@ -650,17 +650,17 @@ namespace MathBase
         {
             return new Vector3(-a.x, -a.y, -a.z);
         }
-        public static implicit operator Vector3(Color0 color)
+        public static implicit operator Vector3(Color32 color)
         {
-            return new Vector3(color.R, color.G, color.B);
+            return new Vector3(color.r, color.g, color.b);
         }
         public static implicit operator Vector3((double ,double,double) vec)
 		{
             return new Vector3(vec.Item1, vec.Item2, vec.Item3);
 		}
-        public static implicit operator Color0(Vector3 color)
+        public static implicit operator Color32(Vector3 color)
         {
-            return new  Color0 ((int)color.x, (int)color.y, (int)color.z);
+            return new  Color32 ((int)color.x, (int)color.y, (int)color.z);
         }
         public double length()
         {

@@ -10,26 +10,7 @@ using System.Threading.Tasks;
 
 namespace Images
 {
-	public struct Pixel
-	{
-		
-		public byte Blue;
-	    public byte Green;
-		public byte Red;
-		public byte Alpha;
-		public unsafe int value { get {
-				
-				fixed(Pixel* p=&this)
-				{
-					return *(int*)p;
-				}
-				
-				; } }
-		public unsafe static implicit operator Pixel(int color)
-		{
-			return *((Pixel*)&color);
-		}
-	}
+
 	public unsafe struct PixelReader
 	{
 		byte* head;
@@ -71,16 +52,16 @@ namespace Images
 		readonly int width;
 		readonly int height;
 
-		public Pixel* this[int x, int y]
+		public Color32* this[int x, int y]
 		{
 			
 			get
 			{
-				return ((Pixel*)(intP+ x + width *y));
+				return ((Color32*)(intP+ x + width *y));
 			}
 			set
 			{
-				*((Pixel*)(intP + x + width*y))=*value; 
+				*((Color32*)(intP + x + width*y))=*value; 
 			}
 		}
 		}
