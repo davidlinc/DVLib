@@ -296,7 +296,7 @@ else
 							}
 							else
 							{
-								var newO=
+								//var newO=
 
 								return new ScriptObject<E, E>(o.returnType, (a, b) => Expression.Assign(a, b), o, o2);
 

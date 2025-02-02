@@ -1040,7 +1040,7 @@ namespace DVLib.LabDataHelper
 			return error;
 		}
 
-		public override MathObject GetObject(string text, List<OperatorScanInfo> infos,ScanResult r)
+		int override MathObject GetObject(string text, List<OperatorScanInfo> infos,ScanResult r)
 		{
 			
 
