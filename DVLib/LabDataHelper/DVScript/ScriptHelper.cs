@@ -209,6 +209,19 @@ else
 				throw new ParamsCountMismatchException();
 			};
 		}
+
+		internal static ScriptF Void()
+		{
+			return
+
+			(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+			{
+
+				return new RootElementScriptObject(typeof(void), Expression.Label(Expression.Label(typeof(void))));
+
+				throw new ParamsCountMismatchException();
+			};
+		}
 		internal static ScriptF ConvertFunc( Type type, ExpMaker<E> exp = null)
 		{
 			return
