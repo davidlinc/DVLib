@@ -22,18 +22,76 @@ namespace DVLib.LabDataHelper.DVScript
 		{
 
 		}
+
+	public class ReturnLabel
+	{
+		public ReturnLabel(Type type)
+		{
+			Target=Expression.Label(type);
+		}
+		public LabelTarget Target {  get;private set; }
+
+		public bool Used { get; private set; } = false;
+
+		public void Use()
+		{
+			Used = true;
+		}
+	}
+
+	
 	public class ScriptManager:ObjectManager<ScriptObject,ScriptInfo,ScriptManager>
 	{
+		public class TypeInfo
+		{
+			public string name;
 
+			public TypeInfo(string name, Type type, E expression)
+			{
+				this.name = name;
+				Type = type;
+				Expression = expression;
+			}
+
+			public Type Type { get; internal set; }
+			public Expression Expression { get; internal set; }
+		}
+		public class TypeDic: StringDictionary<TypeInfo>
+		{
+			Dictionary<Type,Expression> exps=new();
+
+			public void registerType(string name, Type type,Expression expression)
+			{
+				base.Add(name, new TypeInfo(name,type,expression) );
+				exps.Add(type, expression);
+			}
+
+			public Expression getDefaultExpression(Type t)
+			{
+				return  exps[t];
+			}
+		}
 		internal static int  max = 8;
 	
-		StringDictionary<Type> typeDic = new();
-	
+		TypeDic typeDic = new();
+	    
+		Stack<ReturnLabel> labels = new Stack<ReturnLabel>();
+		
+		Stack<HashSet<ParameterExpression>> parameters = new();
+		//public bool RegisterFunctionWhenRead = false;
 
-		public void registerType(string token, Type type, ExpMaker<E> expMaker = null)
+		public void registerType(string token, Type type,Expression expression, ExpMaker<E> expMaker = null)
 		{
-			register(new ScriptInfo(token, max, ConvertFunc(type,expMaker)));
-			typeDic.Add(token, type);
+			if(type!=typeof(void))
+			{
+             register(new ScriptInfo(token, max, ConvertFunc(type,expMaker)));
+			}
+			else
+			{
+				register(new ScriptInfo(token, max, Void()));
+			}
+			
+			typeDic.registerType(token,type,expression);
 		}
 		public override void registerDefault()
 		{
@@ -62,26 +120,43 @@ namespace DVLib.LabDataHelper.DVScript
 			register(new ScriptInfo("x", max, ParamX()));
 			register(new ScriptInfo("y", max, ParamY()));
 			register(new ScriptInfo("z", max , ParamZ()));
-			register(new ScriptInfo("=", 1, EQ()));
+			register(new ScriptInfo("=", 1, EQ()).setReverse());
+			register(new ScriptInfo("{",max+1,Block()));
+			register(new ScriptInfo("return",2, Return()));
 
-			registerType("double",typeof(double));
-			registerType("float",typeof(float));
-			registerType("int",typeof(int));
-			registerType("long",typeof(long));
-			registerType("short",typeof(short));
-			registerType("bool",typeof(bool));
-			registerType("string", typeof(string));
-			registerType("sbyte", typeof(sbyte));
-			registerType("uint", typeof(uint));
-			registerType("ushort", typeof(ushort));
-			registerType("ulong", typeof(ulong));
-			registerType("char", typeof(char));
-			registerType("object", typeof(object));
+			registerType("double",typeof(double),Expression.Constant(0.0));
+			registerType("float",typeof(float), Expression.Constant(0f));
+			registerType("int",typeof(int), Expression.Constant(0));
+			registerType("long",typeof(long), Expression.Constant((long)0));
+			registerType("short",typeof(short), Expression.Constant((short)0));
+			registerType("bool",typeof(bool), Expression.Constant(false));
+			registerType("string", typeof(string), Expression.Constant(""));
+			registerType("sbyte", typeof(sbyte), Expression.Constant((sbyte)0));
+			registerType("uint", typeof(uint), Expression.Constant((uint)0));
+			registerType("ushort", typeof(ushort), Expression.Constant((ushort)0));
+			registerType("ulong", typeof(ulong), Expression.Constant((ulong)0));
+			registerType("char", typeof(char), Expression.Constant((char)0));
+			registerType("object", typeof(object), Expression.Constant(null));
 
+			registerType("void", typeof(void),null);
 			register(new ScriptInfo("string", max, Func<object, string>(o => o.ToString(),true)));
 
 		}
 
+		internal override void pushStack()
+		{
+			base.pushStack();
+			parameters.Push(new HashSet<ParameterExpression>());
+		}
+		public HashSet<ParameterExpression> peakParam()
+		{
+			return parameters.Peek();
+		}
+		internal override bool popStack(out Dictionary<char, HeadCharSet<ScriptObject, ScriptInfo, ScriptManager>> result)
+		{
+			parameters.TryPop(out var p);
+			return base.popStack(out result);
+		}
 		public override void registerLG(LevelGetter getter)
 		{
 
@@ -110,34 +185,79 @@ namespace DVLib.LabDataHelper.DVScript
 		}
 
 	
+		public void pushLabel(Type t)
+		{
+			labels.Push(new ReturnLabel(t));
+		}
+		public bool popLabel(out ReturnLabel label)
+		{
+		return	labels.TryPop(out label);
+		}
 
+		public bool peakLabel(out ReturnLabel label)
+		{
+			return labels.TryPeek(out label);
+		}
 
-
-		 internal (string name,Type t)getName(string name) 
+		static TypeInfo db = new TypeInfo("double",typeof(double),Expression.Constant(0.0)) ;
+		 internal (string name,TypeInfo t)getName(string name) 
 			{
-			bool match = typeDic.match(name, out Type type,out string key);
+			bool match = typeDic.match(name, out TypeInfo type,out string key);
+		
             if (match)
-            {
+            {	
 				return (name.Replace(key, ""),type);
             }
-
-			return (name, typeof(double));
+			return (name,db);
         }
+		internal (string name, TypeInfo t) getName_func(string name)
+		{
+			bool match = typeDic.match(name, out TypeInfo type, out string key);
+			if (match)
+			{
+				return (name.Substring(type.name.Length), type);
+			}
+
+			return (name, null);
+		}
 
 
-	
 
 
-	
+
+		public Expression getDefault(Type t)
+		{
+
+			return typeDic.getDefaultExpression(t);
+			
+			return Expression.Constant(0.0);
+		}
+
+
 		public override ScriptObject getBaseType(string s)
 		{
 
 			try
 			{
-				double d=double.Parse(s);
-				Expression c = Expression.Constant(d);
-			
-				return new SourceScriptObject(typeof(double),c);
+				Expression c=null;
+				if(withPoint(s) || s.EndsWith('d')||s.EndsWith("D"))
+				{
+                double d=double.Parse(s);
+			    c = Expression.Constant(d);
+				}
+				else if(s.EndsWith('f')||s.EndsWith("F"))
+				{
+				float f=float.Parse(s);
+			    c = Expression.Constant(f);
+				}
+				else
+				{
+				int i=int.Parse(s);
+				c = Expression.Constant(i);
+				}
+
+				if(c!=null)
+				return new RootElementScriptObject(c.Type,c);
 			}
 			catch
 			{
