@@ -156,7 +156,7 @@ namespace DVLib.LabDataHelper.DVScript
 		}
 
 
-		static Expression Convert(E e,Type t)
+		public static Expression Convert(E e,Type t)
 		{
 			if(t==typeof(string))
 			{
@@ -197,19 +197,7 @@ else
 
 		}
 
-		internal static ScriptF Void()
-		{
-			return
-
-			(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
-			{
-
-				return new RootElementScriptObject(typeof(void), Expression.Label(Expression.Label(typeof(void))));
-
-				throw new ParamsCountMismatchException();
-			};
-		}
-
+	
 		internal static ScriptF Void()
 		{
 			return
@@ -321,22 +309,150 @@ else
 						}
 						//Expression<Func<I, O>> f = a => func(a);
 						var A = manager.GetObject(s.name, s.infos, r);
+
+					
+
 						return new ReturnScript(A.returnType, label.Target, A);
 
 						throw new ParamsCountMismatchException();
 					};
-
-
-
-
-
-
-
-
-
-
 		}
 
+		public static List<ScanInfo<T, I, M>> Slice<T,I,M>(this List<ScanInfo<T, I, M>> list,int index,int length=-1,int levelChange=0,bool inplace=true) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
+		{
+			List<ScanInfo<T, I, M>> result = new();
+			int start = index;
+			int end=index+length;
+			bool toEnd = length < 0;
+			ScanInfo<T, I, M> info;
+			foreach (var s in list) {
+
+				if(s.position>=start&&(toEnd||( s.position<end)))
+				{
+					info = inplace ? s : s.getCopy();
+					result.Add( info);
+					info.position -= index;
+					info.level += levelChange;
+				}
+			}
+			return result;
+		}
+		public static List<ScanInfo<T, I, M>> Slice<T, I, M>(this  List<ScanInfo<T, I, M>> list, IList< (int index, int length)> pos , int levelChange = 0, bool inplace = true) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
+		{
+			List<ScanInfo<T, I, M>> result = new();
+			int order = 0;
+			var pair = pos[0];
+
+			int start = pair.index;
+			int end = pair.index + pair.length;
+			bool toEnd = pair.length < 0;
+
+			ScanInfo<T, I, M> info;
+			foreach (var s in list)
+			{
+				if(s.position>=end)
+				{	order++;
+					pair = pos[order];
+					start = pair.index;
+				    end = pair.index + pair.length;
+					toEnd = pair.length < 0;
+				}
+				if (s.position >= start && (toEnd || (s.position < end)))
+				{
+					info = inplace ? s : s.getCopy();
+					result.Add(info);
+					info.position -= start;
+					info.level += levelChange;
+				}
+			}
+			return result;
+		}
+		static (string instance,List<ScanInfo> IInfo,string name, (string name,List<ScanInfo> infos)[]Params)?slove_call_(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager)
+		{
+			int dotPos = ois.position;
+			int endPos=-1;
+			char endToken='0';
+			char c;
+			for (int i = dotPos+1; i < text.Length; i++) {
+			
+				c= text[i];
+				if(endPos==-1 )
+				{
+					if (c == '@' || c == '(')
+					{
+						endPos= i;
+						endToken = c;
+
+						if(c=='@')
+						{
+							return (text.Substring(0, dotPos),infos.Slice(0,dotPos),text.Substring(dotPos+1,endPos-dotPos-1),null);
+						}
+					}
+				}
+			}
+
+			if (endToken == '(')
+			{
+				var v=ScriptInfo.solveFunc(text.Substring(endPos),null,infos.Slice(endToken),manager);
+				return (text.Substring(0, dotPos),infos.Slice(0,dotPos), text.Substring(dotPos + 1, endPos-dotPos-1), v);
+			}
+
+			return null;
+		}
+		internal static ScriptF Call()
+		{
+			return
+
+
+					(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+
+						var v=slove_call_(text,ois,infos,manager);
+						if (v.HasValue)
+						{
+
+							var ins = manager.GetObject(v.Value.instance, v.Value.IInfo, r);
+							Type t = ins.returnType;
+							if (v.Value.Params == null)
+							{
+
+
+								var f = t.GetField(v.Value.name);
+								if (f == null)
+								{
+									var p = t.GetProperty(v.Value.name);
+									return new ScriptObject<E>(p.PropertyType, e => Expression.Property(e, p), ins);
+								}
+								return new ScriptObject<E>(f.FieldType, e => Expression.Field(e, f), ins);
+							}
+							else
+							{
+								var vv = v.Value;
+								Type[] types = new Type[vv.Params.Length];
+								ScriptObject[] scriptObjects = new ScriptObject[vv.Params.Length + 1];
+								scriptObjects[vv.Params.Length] = ins;
+								for (int i = 0; i < vv.Params.Length; i++)
+								{
+									scriptObjects[i] = manager.GetObject(vv.Params[i].name, vv.Params[i].infos, r);
+									types[i] = scriptObjects[i].returnType;
+								}
+								var m = t.GetMethod(vv.name, types);
+								/*
+								while(m==null&&t.BaseType!=null)
+								{
+									t = t.BaseType;
+									m = t.GetMethod(vv.name, types);
+
+								DVOS.writeLine(types.Length + "L");
+								DVOS.writeLine(text+"\n"+ m+"!"+t);
+								}*/
+								return new MutiScriptObject(m.ReturnType, e => { return Expression.Call(e[e.Length - 1], m, e.Take(e.Length - 1)); }, scriptObjects);
+							}
+						}
+					
+						throw new ParamsCountMismatchException(text);
+					};
+		}
 		internal static ScriptF Block()
 		{
 			return

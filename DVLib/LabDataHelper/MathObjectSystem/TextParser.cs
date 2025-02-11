@@ -248,12 +248,19 @@ namespace DVLib.LabDataHelper
 		}
 		public  static (string name, List<ScanInfo<T, I, M>> infos)[] solveFunc<T, I, M>(string text, ScanInfo<T, I, M> ois, List<ScanInfo<T, I, M>> infos, M manager) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
 		{
-			int r = ois.operatorInfo.Token.Length;
+            int r = 0;
+            char dot = ',';
+			if (ois!=null)
+            { dot = ois.operatorInfo.dot;
+	         r = ois.operatorInfo.Token.Length;
 			if (text.Length <= r)
 			{
 				return new (string name, List<ScanInfo<T, I, M>> infos)[0];
-			}
-			text = text.Substring(r);
+			}text = text.Substring(r);
+            }
+
+
+			
 
             if(text.StartsWith('('))
             {
@@ -263,8 +270,12 @@ namespace DVLib.LabDataHelper
     text=text.Substring(0, end+1);
 
 	int tt = Helper.clean(ref text);
-			List<int> pos = Helper.findDot(text, ois.operatorInfo.dot);
+			List<int> pos = Helper.findDot(text,dot );
 			int funcSize = pos.Count + 1;
+                    if(end==1)
+                    {
+                        funcSize = 0;
+                    }
 			List<ScanInfo<T, I, M>>[] left = new List<ScanInfo<T, I, M>>[funcSize];
 			for (int i = 0; i < funcSize; i++)
 			{
@@ -688,17 +699,25 @@ namespace DVLib.LabDataHelper
             int level=0;
             ScanInfo<T,InfoT,M> osi;
             char c;
+            //char last;
             HeadCharSet<T,InfoT,M> hs;
             InfoT info;
-            int yhc = 0;
+
+            bool InString = false;
+            bool CheckToken = true;
+            bool InCall = false;
+            //bool lastIsNum=false;
+
             for (int i = 0; i < text_.Length; i++)
             {
                 c = text_[i];
                 if(c=='"')
                 {
-                    yhc++;
+                    InString = !InString;
                 }
-                if(yhc%2==0)
+                CheckToken=!(InString||InCall);
+              
+                if(CheckToken)
                 {
                     bool flag = true;
                     for(int j = 0;j<stack.Count;j++)
@@ -731,10 +750,21 @@ namespace DVLib.LabDataHelper
 
                     }
                 }
-               
-
+                if(InCall)
+                {
+                    if (c == '@' || c == '(')
+                    {
+                        InCall = false;
+                    }
+                }
+                if (c == '.' && text_.Length > i + 1 && !text_[i+1].isNumber())
+                {
+                    InCall=true;
+                }
 
                 level += levelGetter.getLevel(c);
+               // last = c;
+                //lastIsNum = c > -'0' && c <= '9';
             }
             return r;
         }

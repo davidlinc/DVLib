@@ -20,7 +20,7 @@ using static DVLib.LabDataHelper.DVScript.ScriptHelper;
 namespace DVLib.LabDataHelper.DVScript
 {	public class ParamsCountMismatchException:Exception
 		{
-
+		public ParamsCountMismatchException(string info=""):base(info) { }
 		}
 
 	public class ReturnLabel
@@ -203,7 +203,8 @@ namespace DVLib.LabDataHelper.DVScript
 			register(new ScriptInfo("=", 1, EQ()).setReverse());
 			register(new ScriptInfo("{",max+1,Block()));
 			register(new ScriptInfo("return",2, Return()));
-
+			register(new ScriptInfo(".", max, Call()));
+			
 			registerType("double",typeof(double),Expression.Constant(0.0));
 			registerType("float",typeof(float), Expression.Constant(0f));
 			registerType("int",typeof(int), Expression.Constant(0));

@@ -23,6 +23,8 @@ namespace DVLib.LabDataHelper.DVScript
 
 		ScriptInfo ScriptInfo;
 		internal Type returnType = typeof(double);
+
+		Delegate cache;
 		public ScriptObject setReturnType(Type type)
 		{
 			this.returnType = type;
@@ -32,7 +34,7 @@ namespace DVLib.LabDataHelper.DVScript
 
 		internal static ScriptObject Convert(ScriptObject script,Type returnType)
 		{
-			return new ScriptObject<Expression>(returnType,a => Expression.Convert(a, returnType), script);
+			return new ScriptObject<Expression>(returnType,a => ScriptHelper.Convert(a, returnType), script);
 		}
 	
 		internal ScriptObject setScriptInfo(ScriptInfo info)
@@ -47,9 +49,18 @@ namespace DVLib.LabDataHelper.DVScript
 			return Expression.Lambda(v.Item1,v.Item2);
 		}
 
-		public Delegate Compile()
+		public Delegate Compile(bool force=false)
 		{
-			return lambda().Compile();
+			if(cache==null)
+			{
+				cache=lambda().Compile();
+			}
+			return cache;
+		}
+		public unsafe T getDelegate<T>(bool force=false) where T : Delegate
+		{
+
+			return  (T)lambda().Compile(force);
 		}
 
 		public static ScriptObject DoubleParam()

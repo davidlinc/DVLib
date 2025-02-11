@@ -1539,6 +1539,15 @@ Data[i, j] = (colors[i, j]) & 0xff;
 				return true;
 			return false;
 		}
+		static public bool isNumber(this char a)
+		{
+			char b = '0';
+
+			if (a - b < 10)
+				return true;
+
+			return false;
+		}
 		static public bool isLetter(this char a)
 		{
 			char b = 'a';

@@ -1107,9 +1107,29 @@ namespace DVLib.LabDataHelper
 			return ints;
 		}
 
+		public static void clear_(ref string text)
+		{
+			StringBuilder stringBuilder = new StringBuilder();
+			bool inString = false;
+			char c;
+			for (int i = 0; i < text.Length; i++) {
+			c=text[i];
+				if(c=='"')
+				{
+					inString = !inString;
+				}
+
+				if(inString ||(c!=' '&&c!='\n'))
+				{
+					stringBuilder.Append(c);
+				}
+			}
+			text = stringBuilder.ToString();
+		}
 		public static int clean(ref string text)
 		{
-			text = text.Replace(" ", "").Replace("\n", "");
+			clear_(ref text);
+			//text = text.Replace("\n", "");
 			text = text.Trim();
 			int i = 0;//|| (text.StartsWith('{') && text.EndsWith("}")
 			while ((text.StartsWith('(') && text.EndsWith(")")))
