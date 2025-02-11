@@ -36,10 +36,10 @@ namespace DVLib.LabDataHelper.DVScript
 			this.script = script;
 			this.SingleExpMaker = SingleExpMaker;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force = false)
 		{
 			HashSet<ParameterExpression> set = new HashSet<ParameterExpression>();
-			var v = script.getExpression();
+			var v = script.getExpression(force);
 			foreach (var vv in v.Item2)
 			{
 				set.Add(vv);
@@ -50,7 +50,7 @@ namespace DVLib.LabDataHelper.DVScript
 	internal class ScriptObject<T1, T2> : ScriptObject
 	{
 
-		ScriptObject a;
+		internal ScriptObject a;
 		ScriptObject b;
 
 		ExpMaker<T1, T2> expMaker;
@@ -61,10 +61,10 @@ namespace DVLib.LabDataHelper.DVScript
 			this.a = a;
 			this.b = b;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force = false)
 		{
-			var aa = a.getExpression();
-			var bb = b.getExpression();
+			var aa = a.getExpression(force);
+			var bb = b.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in aa.Item2)
 			{
@@ -93,11 +93,11 @@ namespace DVLib.LabDataHelper.DVScript
 			this.b = b;
 			this.c = c;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force = false)
 		{
-			var aa = a.getExpression();
-			var bb = b.getExpression();
-			var cc = b.getExpression();
+			var aa = a.getExpression(force);
+			var bb = b.getExpression(force);
+			var cc = b.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in aa.Item2)
 			{
@@ -131,12 +131,12 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s3 = s3;
 			this.s4 = s4;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force = false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -175,13 +175,13 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s4 = s4;
 			this.s5 = s5;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force = false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -226,14 +226,14 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s5 = s5;
 			this.s6 = s6;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force = false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
-			var a6 = s6.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
+			var a6 = s6.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -284,15 +284,15 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s6 = s6;
 			this.s7 = s7;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force=false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
-			var a6 = s6.getExpression();
-			var a7 = s7.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
+			var a6 = s6.getExpression(force);
+			var a7 = s7.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -349,16 +349,16 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s7 = s7;
 			this.s8 = s8;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force=false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
-			var a6 = s6.getExpression();
-			var a7 = s7.getExpression();
-			var a8 = s8.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
+			var a6 = s6.getExpression(force);
+			var a7 = s7.getExpression(force);
+			var a8 = s8.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -421,17 +421,17 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s8 = s8;
 			this.s9 = s9;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force=false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
-			var a6 = s6.getExpression();
-			var a7 = s7.getExpression();
-			var a8 = s8.getExpression();
-			var a9 = s9.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
+			var a6 = s6.getExpression(force);
+			var a7 = s7.getExpression(force);
+			var a8 = s8.getExpression(force);
+			var a9 = s9.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -500,18 +500,18 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s9 = s9;
 			this.s10 = s10;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force=false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
-			var a6 = s6.getExpression();
-			var a7 = s7.getExpression();
-			var a8 = s8.getExpression();
-			var a9 = s9.getExpression();
-			var a10 = s10.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
+			var a6 = s6.getExpression(force);
+			var a7 = s7.getExpression(force);
+			var a8 = s8.getExpression(force);
+			var a9 = s9.getExpression(force);
+			var a10 = s10.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -586,19 +586,19 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s10 = s10;
 			this.s11 = s11;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force=false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
-			var a6 = s6.getExpression();
-			var a7 = s7.getExpression();
-			var a8 = s8.getExpression();
-			var a9 = s9.getExpression();
-			var a10 = s10.getExpression();
-			var a11 = s11.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
+			var a6 = s6.getExpression(force);
+			var a7 = s7.getExpression(force);
+			var a8 = s8.getExpression(force);
+			var a9 = s9.getExpression(force);
+			var a10 = s10.getExpression(force);
+			var a11 = s11.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -679,20 +679,20 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s11 = s11;
 			this.s12 = s12;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force=false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
-			var a6 = s6.getExpression();
-			var a7 = s7.getExpression();
-			var a8 = s8.getExpression();
-			var a9 = s9.getExpression();
-			var a10 = s10.getExpression();
-			var a11 = s11.getExpression();
-			var a12 = s12.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
+			var a6 = s6.getExpression(force);
+			var a7 = s7.getExpression(force);
+			var a8 = s8.getExpression(force);
+			var a9 = s9.getExpression(force);
+			var a10 = s10.getExpression(force);
+			var a11 = s11.getExpression(force);
+			var a12 = s12.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -779,21 +779,21 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s12 = s12;
 			this.s13 = s13;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force=false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
-			var a6 = s6.getExpression();
-			var a7 = s7.getExpression();
-			var a8 = s8.getExpression();
-			var a9 = s9.getExpression();
-			var a10 = s10.getExpression();
-			var a11 = s11.getExpression();
-			var a12 = s12.getExpression();
-			var a13 = s13.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
+			var a6 = s6.getExpression(force);
+			var a7 = s7.getExpression(force);
+			var a8 = s8.getExpression(force);
+			var a9 = s9.getExpression(force);
+			var a10 = s10.getExpression(force);
+			var a11 = s11.getExpression(force);
+			var a12 = s12.getExpression(force);
+			var a13 = s13.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -886,22 +886,22 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s13 = s13;
 			this.s14 = s14;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force=false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
-			var a6 = s6.getExpression();
-			var a7 = s7.getExpression();
-			var a8 = s8.getExpression();
-			var a9 = s9.getExpression();
-			var a10 = s10.getExpression();
-			var a11 = s11.getExpression();
-			var a12 = s12.getExpression();
-			var a13 = s13.getExpression();
-			var a14 = s14.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
+			var a6 = s6.getExpression(force);
+			var a7 = s7.getExpression(force);
+			var a8 = s8.getExpression(force);
+			var a9 = s9.getExpression(force);
+			var a10 = s10.getExpression(force);
+			var a11 = s11.getExpression(force);
+			var a12 = s12.getExpression(force);
+			var a13 = s13.getExpression(force);
+			var a14 = s14.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -1000,23 +1000,23 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s14 = s14;
 			this.s15 = s15;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force=false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
-			var a6 = s6.getExpression();
-			var a7 = s7.getExpression();
-			var a8 = s8.getExpression();
-			var a9 = s9.getExpression();
-			var a10 = s10.getExpression();
-			var a11 = s11.getExpression();
-			var a12 = s12.getExpression();
-			var a13 = s13.getExpression();
-			var a14 = s14.getExpression();
-			var a15 = s15.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
+			var a6 = s6.getExpression(force);
+			var a7 = s7.getExpression(force);
+			var a8 = s8.getExpression(force);
+			var a9 = s9.getExpression(force);
+			var a10 = s10.getExpression(force);
+			var a11 = s11.getExpression(force);
+			var a12 = s12.getExpression(force);
+			var a13 = s13.getExpression(force);
+			var a14 = s14.getExpression(force);
+			var a15 = s15.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{
@@ -1121,24 +1121,24 @@ namespace DVLib.LabDataHelper.DVScript
 			this.s15 = s15;
 			this.s16 = s16;
 		}
-		public override (Expression, HashSet<ParameterExpression>) getExpression()
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force=false)
 		{
-			var a1 = s1.getExpression();
-			var a2 = s2.getExpression();
-			var a3 = s3.getExpression();
-			var a4 = s4.getExpression();
-			var a5 = s5.getExpression();
-			var a6 = s6.getExpression();
-			var a7 = s7.getExpression();
-			var a8 = s8.getExpression();
-			var a9 = s9.getExpression();
-			var a10 = s10.getExpression();
-			var a11 = s11.getExpression();
-			var a12 = s12.getExpression();
-			var a13 = s13.getExpression();
-			var a14 = s14.getExpression();
-			var a15 = s15.getExpression();
-			var a16 = s16.getExpression();
+			var a1 = s1.getExpression(force);
+			var a2 = s2.getExpression(force);
+			var a3 = s3.getExpression(force);
+			var a4 = s4.getExpression(force);
+			var a5 = s5.getExpression(force);
+			var a6 = s6.getExpression(force);
+			var a7 = s7.getExpression(force);
+			var a8 = s8.getExpression(force);
+			var a9 = s9.getExpression(force);
+			var a10 = s10.getExpression(force);
+			var a11 = s11.getExpression(force);
+			var a12 = s12.getExpression(force);
+			var a13 = s13.getExpression(force);
+			var a14 = s14.getExpression(force);
+			var a15 = s15.getExpression(force);
+			var a16 = s16.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in a1.Item2)
 			{

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Images;
 using DVOSLib;
 using DVLib.LabDataHelper.MathObjectSystem;
+using static System.Net.Mime.MediaTypeNames;
 //using ScainfoM = ScanInfo<DVLib.LabDataHelper.MathObject, I, M>;
 
 namespace DVLib.LabDataHelper
@@ -120,8 +121,10 @@ namespace DVLib.LabDataHelper
         public int priority { get; internal set; }
         public char dot { get; internal set; } = ',';
         public bool reverse { get; internal set; }
+        internal int TokenEndCount = 0;
         public Factory<T,S,M> factory { get; internal set; }
 
+        public virtual string Token { get=>mark.Substring(0,mark.Length-TokenEndCount);  }
 
         public ObjectInfo()
         {
@@ -149,7 +152,7 @@ namespace DVLib.LabDataHelper
         
 		public static CodeBlockInfo<T, I, M> solveCodeBlock<T, I, M>(string text, ScanInfo<T, I, M> ois, List<ScanInfo<T, I, M>> infos, MathObjectManager manager) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
 		{
-			int r = ois.operatorInfo.mark.Length;
+			int r = ois.operatorInfo.Token.Length;
             (string, List<ScanInfo<T, I, M>>)? code= null;
 			if (text.Length <= r)
 			{
@@ -245,7 +248,7 @@ namespace DVLib.LabDataHelper
 		}
 		public  static (string name, List<ScanInfo<T, I, M>> infos)[] solveFunc<T, I, M>(string text, ScanInfo<T, I, M> ois, List<ScanInfo<T, I, M>> infos, M manager) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
 		{
-			int r = ois.operatorInfo.mark.Length;
+			int r = ois.operatorInfo.Token.Length;
 			if (text.Length <= r)
 			{
 				return new (string name, List<ScanInfo<T, I, M>> infos)[0];
@@ -322,7 +325,7 @@ namespace DVLib.LabDataHelper
 			List<ScanInfo<T, I, M>> left = new List<ScanInfo<T, I, M>>();
 			List<ScanInfo<T, I, M>> right = new List<ScanInfo<T, I, M>>();
 			int l = ois.position;
-			int r = ois.position + ois.operatorInfo.mark.Length;
+			int r = ois.position + ois.operatorInfo.Token.Length;
 			foreach (var v in infos)
 			{
 				if (v.position < l)
@@ -338,7 +341,7 @@ namespace DVLib.LabDataHelper
 			return new (string, List<ScanInfo<T, I, M>>)[]{(text.Substring(0, l), left),
 				(text.Substring(r), right)};
 		}
-		public static (string name, List<ScanInfo<T, I, M>> infos) solveL<T, I, M>(string text, ScanInfo<T, I, M> ois, List<ScanInfo<T, I, M>> infos, MathObjectManager manager) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
+		public static (string name, List<ScanInfo<T, I, M>> infos) solveL<T, I, M>(string text, ScanInfo<T, I, M> ois, List<ScanInfo<T, I, M>> infos, M manager) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
 		{
 			List<ScanInfo<T, I, M>> left = new List<ScanInfo<T, I, M>>();
 			int l = ois.position;
@@ -355,7 +358,7 @@ namespace DVLib.LabDataHelper
 		{
 			List<ScanInfo<T, I, M>> right = new List<ScanInfo<T, I, M>>();
 
-			int r = ois.operatorInfo.mark.Length;
+			int r = ois.operatorInfo.Token.Length;
 			foreach (var v in infos)
 			{
 				if (v.position >= r)
@@ -376,7 +379,7 @@ namespace DVLib.LabDataHelper
 
 		public int maxPriority { get; private set; } = 0;
         Dictionary<char, HeadCharSet<T,InfoT,M>> stringLic = new Dictionary<char, HeadCharSet<T, InfoT,M>>();
-        Stack<Dictionary<char, HeadCharSet<T, InfoT, M>>> stack = new Stack<Dictionary<char, HeadCharSet<T, InfoT, M>>>();
+        List<Dictionary<char, HeadCharSet<T, InfoT, M>>> stack = new List<Dictionary<char, HeadCharSet<T, InfoT, M>>>();
         bool canOver = true;
         public LevelGetter levelGetter { get; private set; } = new LevelGetter();
         internal int ObjectDepth = 0;
@@ -417,24 +420,29 @@ namespace DVLib.LabDataHelper
             return null;
         }
 	
-        internal void pushStack()
+        internal virtual void pushStack()
         {
-            stack.Push(new Dictionary<char, HeadCharSet<T, InfoT, M>>());
+            stack.Add(new Dictionary<char, HeadCharSet<T, InfoT, M>>());
         }
-        internal bool  popStack(out Dictionary<char, HeadCharSet<T, InfoT, M>> result)
+        internal virtual bool  popStack(out Dictionary<char, HeadCharSet<T, InfoT, M>> result)
         {
-            if(stack.TryPop(out result))
+            if(stack.Count>0 )
             {
+                result = stack[stack.Count-1];
+                stack.RemoveAt(stack.Count - 1);
                 return true;
             }
+            result = null;
             return false;
         }
-		internal bool peekStack(out Dictionary<char, HeadCharSet<T, InfoT, M>> result)
+		internal virtual bool peekStack(out Dictionary<char, HeadCharSet<T, InfoT, M>> result,int offset=0)
 		{
-			if (stack.TryPeek(out result))
+			if (stack.Count-offset>0)
 			{
+               result= stack[stack.Count-1-offset];
 				return true;
 			}
+            result = null;
 			return false;
 		}
 
@@ -578,10 +586,18 @@ namespace DVLib.LabDataHelper
             {
                 removeInfo(item);
             }
-        }
+		}
 
   
-
+        public T GetObject(string text)
+        {
+            List<ScanInfo<T, InfoT, M>> info = new List<ScanInfo<T, InfoT, M>>();
+    	var r = ScanForOperators(ref text, info);
+		return GetObject(text, info, r);
+        }
+            
+        
+            
      
         internal virtual T  GetObject(string text, List<ScanInfo<T,InfoT,M>> infos,ScanResult result)
         {
@@ -684,8 +700,10 @@ namespace DVLib.LabDataHelper
                 }
                 if(yhc%2==0)
                 {
-                    
-                    if(peekStack(out var d)&&d.TryGetValue(c, out hs)&&(info = hs.Match(text_.Slice(i)))!=null)
+                    bool flag = true;
+                    for(int j = 0;j<stack.Count;j++)
+                    {
+                      if(peekStack(out var d,j)&&d.TryGetValue(c, out hs)&&(info = hs.Match(text_.Slice(i)))!=null)
                     {
 							
 
@@ -693,8 +711,13 @@ namespace DVLib.LabDataHelper
 								list.Add(osi);
 								i += info.mark.Length - 1;
 								r.add(info.mark);
+                            flag = false;
+                            break;
 					}
-                    else if (stringLic.TryGetValue(c, out hs))
+                    }
+                 
+
+                    if (flag&& stringLic.TryGetValue(c, out hs))
                     {
                     info = hs.Match(text_.Slice(i));
                     if (info != null)

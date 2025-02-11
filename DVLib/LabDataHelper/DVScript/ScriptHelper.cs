@@ -55,22 +55,21 @@ namespace DVLib.LabDataHelper.DVScript
 			return (A, B) => maker(A, Expression.Negate(B));
 		}
 
-		internal static ScriptInfo param(string name, Type type, out ParameterExpression e)
+		internal static ScriptInfo param(string name, Type type, out ParameterExpression e,string tag= "tempParam",bool check=true)
 		{
-			e = Expression.Parameter(type);
-			Expression ee = e;
+			e = Expression.Parameter(type,name);
+			ParameterExpression ee = e;
 			return new ScriptInfo(name, max,
 
 				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
 
-					return new SourceScriptObject(type, ee);
+					return new VarScriptObject(type, ee).setCheck(check);
 				}
 
-				, "tempParam");
+				, tag);
 		}
-
-		internal static Dictionary<Type, int> typePriority = new Dictionary<Type, int>() { { typeof(byte), 0 }, { typeof(sbyte), 1 }, { typeof(short), 2 }, { typeof(ushort), 3 }, { typeof(int), 4 }, { typeof(uint), 5 }, { typeof(long), 6 }, { typeof(ulong), 7 }, { typeof(float), 8 }, { typeof(double), 9 }, };
+		internal static Dictionary<Type, int> typePriority = new Dictionary<Type, int>() { { typeof(byte), 0 }, { typeof(sbyte), 1 }, { typeof(short), 2 }, { typeof(ushort), 3 }, { typeof(int), 4 }, { typeof(uint), 5 }, { typeof(long), 6 }, { typeof(ulong), 7 }, { typeof(float), 8 }, { typeof(double), 9 }, { typeof(string), 10 } };
 
 		internal static Type getNewType(Type a, Type b)
 		{
@@ -90,6 +89,43 @@ namespace DVLib.LabDataHelper.DVScript
 
 		}
 
+		static MethodInfo StringConcat = typeof(string).GetMethod("Concat",new[] { typeof(string), typeof(string) });
+
+		static Expression StringAdd(Expression a, Expression b)
+		{
+			return Expression.Add(a, b,StringConcat);
+		}
+		internal static ScriptF Add()
+		{
+			return
+
+				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				{
+					ExpMaker<E, E> expMaker = Expression.Add;
+					var s = ScriptInfo.solveLR(text, ois, infos, manager);
+					var A = manager.GetObject(s[0].name, s[0].infos, r);
+					var B = manager.GetObject(s[1].name, s[1].infos, r);
+					var Atype = A.returnType;
+					var Btype = B.returnType;
+					bool cast = false;
+
+					if (Atype != Btype)
+					{
+						Atype = Btype = getNewType(Atype, Btype);
+						cast = true;
+					}
+					var v = manager.GetMethodOverride(ois.operatorInfo.Token, Atype);
+					
+
+					return new ScriptObject<E, E>(Atype, (a, b) => { 
+						
+						if (cast) { a = ScriptHelper.Convert(a, Atype); b = ScriptHelper.Convert(b, Btype); }
+						if (v != null) {
+						return Expression.Call(null,v, a, b);
+						}
+						return  expMaker(a, b); }, A, B).setReturnType(Atype);
+				};
+		}
 		internal static ScriptF NaiveMath(ExpMaker<E, E> expMaker)
 		{
 			return
@@ -102,17 +138,33 @@ namespace DVLib.LabDataHelper.DVScript
 					var Atype = A.returnType;
 					var Btype = B.returnType;
 					bool cast = false;
+
 					if (Atype != Btype)
 					{
 						Atype = Btype = getNewType(Atype, Btype);
 						cast = true;
 					}
+					var v = manager.GetMethodOverride(ois.operatorInfo.Token, Atype);
 
-
-					return new ScriptObject<E, E>(Atype, (a, b) => { if (cast) { a = Expression.Convert(a, Atype); b = Expression.Convert(b, Btype); } return expMaker(a, b); }, A, B).setReturnType(Atype);
+					return new ScriptObject<E, E>(Atype, (a, b) => { if (cast) { a = ScriptHelper.Convert(a, Atype); b = ScriptHelper.Convert(b, Btype); } 
+						if(v!=null)
+						{
+							return Expression.Call(null,v, a, b);
+						}
+						return expMaker(a, b); }, A, B).setReturnType(Atype);
 				};
 		}
 
+
+		static Expression Convert(E e,Type t)
+		{
+			if(t==typeof(string))
+			{
+				return Expression.Call(e, e.Type.GetMethod("ToString",new Type[0]));
+			}
+
+			return Expression.Convert(e, t);
+		}
 		internal static ScriptF Subtract()
 		{
 			return
@@ -137,12 +189,25 @@ else
 		re = getNewType(A.returnType, B.returnType);
 		cast = true;
 	}
-	return new ScriptObject<E, E>(re, (a, b) => { if (cast) { a = Expression.Convert(a, re); b = Expression.Convert(b, re); } return Expression.Subtract(a, b); }, A, B).setReturnType(re);
+	return new ScriptObject<E, E>(re, (a, b) => { if (cast) { a = ScriptHelper.Convert(a, re); b = ScriptHelper.Convert(b, re); } return Expression.Subtract(a, b); }, A, B).setReturnType(re);
 
 }
 };
 
 
+		}
+
+		internal static ScriptF Void()
+		{
+			return
+
+			(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+			{
+
+				return new RootElementScriptObject(typeof(void), Expression.Label(Expression.Label(typeof(void))));
+
+				throw new ParamsCountMismatchException();
+			};
 		}
 		internal static ScriptF ConvertFunc( Type type, ExpMaker<E> exp = null)
 		{
@@ -155,7 +220,7 @@ else
 				if (s.Length > 0)
 				{
 					var v = manager.GetObject(s[0].name, s[0].infos, r);
-					return new ScriptObject<E>(type, (a) => { if (exp == null) return Expression.Convert(a, type); return exp(a); }, v).setReturnType(type);
+					return new ScriptObject<E>(type, (a) => { if (exp == null) return ScriptHelper.Convert(a, type); return exp(a); }, v).setReturnType(type);
 
 				}
 
@@ -164,7 +229,7 @@ else
 		}
 		internal static ScriptObject Cast(this ScriptObject script, Type type)
 		{
-			return new ScriptObject<E>(type, e => Expression.Convert(e, type), script);
+			return new ScriptObject<E>(type, e => ScriptHelper.Convert(e, type), script);
 		}
 		internal static ScriptF LR<L, R, O>(Func<L, R, O> func, bool cast = false)
 		{
@@ -224,6 +289,101 @@ else
 			}
 			return (name, Params);
 		}
+		internal static ScriptF Return()
+		{
+			return
+
+
+					(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+
+						var s = ScriptInfo.solveR(text, ois, infos, manager);
+
+						bool hasLabel=manager.peakLabel(out var label);
+						if(s.name.Length==0)
+						{
+							return new ReturnScript(typeof(void), label.Target, null); 
+						}
+						//Expression<Func<I, O>> f = a => func(a);
+						var A = manager.GetObject(s.name, s.infos, r);
+						return new ReturnScript(A.returnType, label.Target, A);
+
+						throw new ParamsCountMismatchException();
+					};
+
+
+
+
+
+
+
+
+
+
+		}
+
+		internal static ScriptF Block()
+		{
+			return
+
+
+					(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+
+						int end = text.AsSpan().findEnd('{', '}');
+						string block = text.Substring(0, end + 1);
+						List<int> pos = new List<int>();
+						string[] ss = block.Substring(1, end).cutZeroLevel(';', manager.levelGetter, pos);
+
+						manager.pushStack();
+						bool shouldReturn=manager.peakLabel(out var label)&&!label.Used;
+
+						if(shouldReturn)
+						{
+							label.Use();
+						}
+						//HashSet<ParameterExpression> parameters = new HashSet<ParameterExpression>();
+						int l = shouldReturn ? ss.Length + 1:ss.Length ;
+						ScriptObject[] scriptObjects = new ScriptObject[l];
+						for (int i = 0; i < ss.Length; i++)
+						{
+							//pos[i]++;
+							var script = manager.GetObject(ss[i]);
+							scriptObjects[i] = script;
+						}
+						if(shouldReturn)
+						{
+							scriptObjects[l - 1] = new RootElementScriptObject(label.Target.Type, Expression.Label(label.Target, manager.getDefault(label.Target.Type)));
+						}
+
+						var parameters = manager.peakParam();
+						manager.popStack(out var remove);
+
+
+						return new MutiScriptObject(typeof(double), 
+
+						(ss) =>
+
+						Expression.Block(parameters, ss),
+
+						scriptObjects
+						
+						);
+
+
+						throw new ParamsCountMismatchException();
+					};
+
+
+
+
+
+
+
+
+
+
+		}
 		internal static ScriptF EQ()
 		{
 			return
@@ -234,16 +394,22 @@ else
 
 						var v = ScriptInfo.solveLR(text, ois, infos, manager);
 
-						if (v[0].name.isFuncName())
+						var n = manager.getName_func(v[0].name);
+						if (n.name.isFuncName())
 						{
-							ReadOnlySpan<char> funcname = v[0].name.AsSpan();
+
+							manager.pushStack();
+							ReadOnlySpan<char> funcname = n.name.AsSpan();
 							ReadOnlySpan<char> func = v[1].name.AsSpan();
 							bool cast = true;
 							if (funcname.EndsWith("#"))
 							{
 								cast = false;
 							}
-
+							if(n.t!=null)
+							{
+								manager.pushLabel(n.t.Type);
+							}
 							if (funcname != null && func != null)
 							{
 
@@ -256,7 +422,7 @@ else
 									for (int i = 0; i < paramCount; i++)
 									{
 										var v1 = manager.getName(args[i]);
-										scriptInfos[i] = manager.register(param(v1.name, v1.t, out es[i]));
+										scriptInfos[i] = manager.registerInStack(param(v1.name, v1.t.Type, out es[i]));
 									}
 								}
 
@@ -264,41 +430,55 @@ else
 								var re = manager.ScanForOperators(ref v[1].name, scanInfos);
 								var obj = manager.GetObject(v[1].name, scanInfos, re);
 								var ge = obj.getExpression();
-								var vr = Expression.Lambda(ge.Item1, ge.Item2);
+								var vr = Expression.Lambda(ge.Item1,es);
 
 								var vr1 = () => { manager.register(new ScriptInfo(name, max, Func(vr, cast))); };
 
 								Expression t = vr1.Target != null ? Expression.Constant(vr1.Target) : null;
 
 								Expression ea = Expression.Call(t, vr1.Method);
-
+								/*
 								for (int i = 0; i < paramCount; i++)
 								{
-									manager.register(scriptInfos[i]);
+									var vv= scriptInfos[i];
+									if (vv != null)
+									manager.register(vv);
+								}*/
+								if(n.t!=null)
+								{
+									manager.popLabel(out var label);
 								}
-								return new SourceScriptObject(typeof(void), ea);
+								manager.popStack(out var vv);
+								//DVOS.writeLine(vv.Count);
+								return new RootElementScriptObject(typeof(void), ea);
 
 							}
 						}
-						else if (v[0].name.isVarName())
+						else if (n.name.isVarName())
 						{
-							var n = manager.getName(v[0].name);
+							//n = manager.getName(v[0].name);
 
 
-
-						
 							var o = manager.GetObject(n.name, v[0].infos, r);
 
-							var o2 = manager.GetObject(n.name, v[0].infos, r);
+							var o2 = manager.GetObject(v[1].name, v[1].infos, r);
 							if (o is VarScriptObject)
 							{
-								return new ScriptObject<E, E>(o.returnType, (a, b) => Expression.Assign(a, b), o, o2);
+
+								var vr = (o as VarScriptObject).setValue(o2);
+								//manager.peakParam().Add(vr.GetVarScript().getValue());
+								//return new ScriptObject<E, E>(o.returnType, (a, b) => Expression.Assign(a, b), o, o2);
+								return vr;
 							}
 							else
 							{
+								Type t = n.t == null ? o2.returnType : n.t.Type;
+								manager.registerInStack(param(n.name, t, out var e,"tempParam",false));
 								//var newO=
-
-								return new ScriptObject<E, E>(o.returnType, (a, b) => Expression.Assign(a, b), o, o2);
+                            var vso=new VarScriptObject(t, e);
+								vso.setCheck(false);
+								manager.peakParam().Add(vso.getValue());
+								return vso.setValue(o2);
 
 							}
 
@@ -321,7 +501,18 @@ else
 
 			;
 		}
+		public static bool withPoint(ReadOnlySpan<char> span)
+		{
+			for (int i = 0; i < span.Length - 1; i++)
+			{
+				if (span[i] == '.' && span[i + 1] >= '0' && span[i + 1] <= '9')
+				{
+					return true;
+				}
 
+			}
+			return false;
+		}
 		internal static ScriptF Action<I>(Action<I> func, bool cast = false)
 		{
 			return
@@ -410,7 +601,7 @@ else
 							var type = param[i].Type;
 							if (type != scriptObjects[i].returnType && cast)
 							{
-								scriptObjects[i] = new ScriptObject<E>(type, (a) => { return Expression.Convert(a, type); }, scriptObjects[i]).setReturnType(type);
+								scriptObjects[i] = new ScriptObject<E>(type, (a) => { return ScriptHelper.Convert(a, type); }, scriptObjects[i]).setReturnType(type);
 							}
 						}
 						return new MutiScriptObject(delegate_.ReturnType, (m) => {
@@ -555,7 +746,7 @@ else
 				(string text, ScanInfo ois, ScanList infos, ScriptManager manager, ScanResult r) =>
 				{
 
-					var s = ScriptInfo.solveR(text, ois, infos, manager);
+					var s = ScriptInfo.solveL(text, ois, infos, manager);
 					Expression<Func<I, O>> f = a => func(a);
 					var A = manager.GetObject(s.name, s.infos, r);
 
@@ -578,7 +769,7 @@ else
 					Expression<Func<O>> f = () => func();
 					int t = s.Length;
 
-					return new SourceScriptObject(typeof(O), f);
+					return new RootElementScriptObject(typeof(O), f);
 
 
 				};

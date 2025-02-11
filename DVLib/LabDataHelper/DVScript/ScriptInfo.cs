@@ -17,9 +17,20 @@ namespace DVLib.LabDataHelper.DVScript
 		this.priority = priority;
 		this.factory = factory;
 		this.tag = tag;	
-
+			
 		}
-	
+
+		public ScriptInfo setTokenEndCount(int c)
+		{
+			this.TokenEndCount=c;
+			return this;
+		}
+
+		public ScriptInfo setReverse()
+		{
+			this.reverse = true;	
+			return this;
+		}
 	}
 
 }
