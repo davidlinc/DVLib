@@ -112,6 +112,7 @@ namespace DVLib.LabDataHelper
             this.code = code;
         }
     }
+    public delegate bool ObjContition(ReadOnlySpan<char> chars, int pos);
     public class ObjectInfo<T,S,M>where S:ObjectInfo<T,S,M>,new() where M:ObjectManager<T,S,M>
     {
     
@@ -121,14 +122,21 @@ namespace DVLib.LabDataHelper
         public int priority { get; internal set; }
         public char dot { get; internal set; } = ',';
         public bool reverse { get; internal set; }
+
         internal int TokenEndCount = 0;
+
+        public ObjContition ShouldCreate { get; private set; } = (s, p) => true;
         public Factory<T,S,M> factory { get; internal set; }
 
         public virtual string Token { get=>mark.Substring(0,mark.Length-TokenEndCount);  }
 
-        public ObjectInfo()
-        {
+		static bool false_(ReadOnlySpan<char> span, int index)
+		{
+			return false;
+		}
 
+		public ObjectInfo()
+        {
         }
         public ObjectInfo(string mark, int priority, Factory<T,S,M> factory=null,string tag = "raw")
         {
@@ -138,7 +146,19 @@ namespace DVLib.LabDataHelper
             this.factory = factory;
         }
 
-        public virtual S copyForm(S info)
+        public virtual ObjectInfo<T, S, M> setCondition(ObjContition objContition)
+        {
+            this.ShouldCreate = objContition;
+
+            return this;
+        }
+		public virtual ObjectInfo<T, S, M> setNoInstance()
+		{
+			this.ShouldCreate =false_;
+
+			return this;
+		}
+		public virtual S copyForm(S info)
         {
             tag = info.tag;
             mark = info.mark;
@@ -146,6 +166,7 @@ namespace DVLib.LabDataHelper
             dot = info.dot;
             reverse = info.reverse;
             factory = info.factory;
+            ShouldCreate=info.ShouldCreate;
             return (S)this;
         }
 
@@ -246,8 +267,10 @@ namespace DVLib.LabDataHelper
             return new CodeBlockInfo<T, I, M>(null);
 			
 		}
+
+        
 		public  static (string name, List<ScanInfo<T, I, M>> infos)[] solveFunc<T, I, M>(string text, ScanInfo<T, I, M> ois, List<ScanInfo<T, I, M>> infos, M manager) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
-		{
+		{    
             int r = 0;
             char dot = ',';
 			if (ois!=null)
@@ -261,6 +284,7 @@ namespace DVLib.LabDataHelper
 
 
 			
+            
 
             if(text.StartsWith('('))
             {
@@ -268,9 +292,11 @@ namespace DVLib.LabDataHelper
             if(end<text.Length)
                 {
     text=text.Substring(0, end+1);
-
 	int tt = Helper.clean(ref text);
+
 			List<int> pos = Helper.findDot(text,dot );
+
+
 			int funcSize = pos.Count + 1;
                     if(end==1)
                     {
@@ -282,7 +308,7 @@ namespace DVLib.LabDataHelper
 				left[i] = new List<ScanInfo<T, I, M>>();
 			}
 
-
+                   // DVOS.writeLine(text+":::"+infos.Count);
 			foreach (var v in infos)
 			{
 				v.level -= tt;
@@ -383,6 +409,18 @@ namespace DVLib.LabDataHelper
 
 
 	}
+
+    public class TokenIgnore
+    {
+     public   ObjContition ShouldIgnore { get;private set; }
+     public   ObjContition ShouldStop { get;private set; }
+
+        public TokenIgnore(ObjContition shouldIgnore, ObjContition shouldStop)
+        {
+            this.ShouldIgnore = shouldIgnore;
+            this.ShouldStop = shouldStop;
+        }
+    }
 	public class ObjectManager<T,InfoT,M>:ChagedObject where InfoT:ObjectInfo<T,InfoT,M> ,new() where M:ObjectManager<T,InfoT,M>
     {
 
@@ -391,9 +429,11 @@ namespace DVLib.LabDataHelper
 		public int maxPriority { get; private set; } = 0;
         Dictionary<char, HeadCharSet<T,InfoT,M>> stringLic = new Dictionary<char, HeadCharSet<T, InfoT,M>>();
         List<Dictionary<char, HeadCharSet<T, InfoT, M>>> stack = new List<Dictionary<char, HeadCharSet<T, InfoT, M>>>();
-        bool canOver = true;
+        List<TokenIgnore> Ignore = new List<TokenIgnore>();
+		bool canOver = true;
         public LevelGetter levelGetter { get; private set; } = new LevelGetter();
         internal int ObjectDepth = 0;
+
 
         public ObjectManager()
         {
@@ -502,6 +542,12 @@ namespace DVLib.LabDataHelper
 			return null;
 		}
 
+        public void addTokenIgnore(ObjContition inC, ObjContition outC)
+        {
+            
+                Ignore.Add(new TokenIgnore(inC, outC));
+       
+        }
 		public virtual void registerLG(LevelGetter getter)
         {
 
@@ -600,7 +646,7 @@ namespace DVLib.LabDataHelper
 		}
 
   
-        public T GetObject(string text)
+       internal T GetObject(string text)
         {
             List<ScanInfo<T, InfoT, M>> info = new List<ScanInfo<T, InfoT, M>>();
     	var r = ScanForOperators(ref text, info);
@@ -629,6 +675,7 @@ namespace DVLib.LabDataHelper
             {
                 v.position -= t;
                 v.level -= t;
+                
                 if (v.level == 0)
                 {
                     plist[v.operatorInfo.priority].Add(v);
@@ -656,7 +703,7 @@ namespace DVLib.LabDataHelper
 
             if (ois != null)
             {
-
+               // DVOS.writeLine(ois.operatorInfo.Token);
                 var v = ois.operatorInfo.factory(text, ois, infos, (M)this,result);
                 onCreated(v, ois.operatorInfo);
 
@@ -693,6 +740,7 @@ namespace DVLib.LabDataHelper
         public ScanResult ScanForOperators(ref string text, List<ScanInfo<T,InfoT,M>> list)
         {
             ScanResult r = new ScanResult(ID);
+           // Helper.clean(ref text);
             text=formalizeCode(text);
             ReadOnlySpan<char> text_ = text.AsSpan();
         
@@ -704,18 +752,23 @@ namespace DVLib.LabDataHelper
             InfoT info;
 
             bool InString = false;
+
             bool CheckToken = true;
+            TokenIgnore tokenIgnore = null;
             bool InCall = false;
             //bool lastIsNum=false;
 
             for (int i = 0; i < text_.Length; i++)
             {
                 c = text_[i];
+                /*
                 if(c=='"')
                 {
                     InString = !InString;
                 }
                 CheckToken=!(InString||InCall);
+                */
+
               
                 if(CheckToken)
                 {
@@ -724,14 +777,17 @@ namespace DVLib.LabDataHelper
                     {
                       if(peekStack(out var d,j)&&d.TryGetValue(c, out hs)&&(info = hs.Match(text_.Slice(i)))!=null)
                     {
-							
 
-								osi = new ScanInfo<T, InfoT, M>(i, level, info);
-								list.Add(osi);
-								i += info.mark.Length - 1;
-								r.add(info.mark);
-                            flag = false;
-                            break;
+
+                            if (info.ShouldCreate(text_, i))
+                            {
+                                osi = new ScanInfo<T, InfoT, M>(i, level, info);
+                                list.Add(osi);
+                                i += info.Token.Length - 1;
+                                r.add(info.mark);
+                                flag = false;
+                                break;
+                            }
 					}
                     }
                  
@@ -739,17 +795,34 @@ namespace DVLib.LabDataHelper
                     if (flag&& stringLic.TryGetValue(c, out hs))
                     {
                     info = hs.Match(text_.Slice(i));
-                    if (info != null)
+                    if (info != null&&info.ShouldCreate(text_,i))
                     {
               
                         osi = new ScanInfo<T,InfoT,M>(i, level, info);
                         list.Add(osi);
-                        i += info.mark.Length - 1;
+                        i += info.Token.Length - 1;
                         r.add(info.mark);
                     }
 
                     }
                 }
+                if(CheckToken)
+                {
+                    foreach(var v in Ignore)
+                    {
+                        if(v.ShouldIgnore(text_,i))
+                        {
+                            tokenIgnore = v;
+                            CheckToken = false;
+                        }
+                    }
+				}
+				else if (tokenIgnore.ShouldStop(text_, i))
+				{
+					CheckToken = true;
+					tokenIgnore = null;
+				}
+				/*
                 if(InCall)
                 {
                     if (c == '@' || c == '(')
@@ -761,8 +834,8 @@ namespace DVLib.LabDataHelper
                 {
                     InCall=true;
                 }
-
-                level += levelGetter.getLevel(c);
+                */
+				level += levelGetter.getLevel(c);
                // last = c;
                 //lastIsNum = c > -'0' && c <= '9';
             }

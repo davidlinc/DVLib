@@ -426,6 +426,7 @@ namespace DVLib.LabDataHelper
 					if(toReplace.match(s,out var pair,out var st,i))
 					{
 						SB.Append(pair.Item2);
+						
 						i += pair.Item1.Length - 1;
 					}
 					else
@@ -1112,6 +1113,8 @@ namespace DVLib.LabDataHelper
 			StringBuilder stringBuilder = new StringBuilder();
 			bool inString = false;
 			char c;
+			int count = 0;
+
 			for (int i = 0; i < text.Length; i++) {
 			c=text[i];
 				if(c=='"')
@@ -1127,11 +1130,11 @@ namespace DVLib.LabDataHelper
 			text = stringBuilder.ToString();
 		}
 		public static int clean(ref string text)
-		{
+		{int i = 0;
 			clear_(ref text);
 			//text = text.Replace("\n", "");
 			text = text.Trim();
-			int i = 0;//|| (text.StartsWith('{') && text.EndsWith("}")
+			//|| (text.StartsWith('{') && text.EndsWith("}")
 			while ((text.StartsWith('(') && text.EndsWith(")")))
 			{
 				text = text.Substring(1, text.Length - 2);
