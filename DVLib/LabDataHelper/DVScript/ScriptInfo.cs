@@ -25,7 +25,12 @@ namespace DVLib.LabDataHelper.DVScript
 			this.TokenEndCount=c;
 			return this;
 		}
+		public override ScriptInfo setContition(ObjContition objContition)
+		{
+			base.setContition(objContition);
 
+			return this;
+		}
 		public ScriptInfo setReverse()
 		{
 			this.reverse = true;	

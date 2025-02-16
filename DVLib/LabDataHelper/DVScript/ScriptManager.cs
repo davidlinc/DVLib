@@ -16,6 +16,7 @@ using DVLib.LabDataHelper.MathObjectSystem;
 using System.Security.Cryptography;
 using MathBase;
 using static DVLib.LabDataHelper.DVScript.ScriptHelper;
+using System.Runtime.CompilerServices;
 
 namespace DVLib.LabDataHelper.DVScript
 {	public class ParamsCountMismatchException:Exception
@@ -134,11 +135,14 @@ namespace DVLib.LabDataHelper.DVScript
 		static TypeInfo db = new TypeInfo("double", typeof(double), Expression.Constant(0.0));
 		Stack<HashSet<ParameterExpression>> parameters = new();
 		//public bool RegisterFunctionWhenRead = false;
+
 		public void registerType(string token, Type type,Expression expression, ExpMaker<E> expMaker = null)
 		{
 			if(type!=typeof(void))
 			{
 				register(new ScriptInfo(token +'(', max, ConvertFunc(type, expMaker)).setTokenEndCount(1));
+
+				register(new ScriptInfo("new" + token, max, New(type)));
 			}
 			else
 			{
@@ -146,6 +150,13 @@ namespace DVLib.LabDataHelper.DVScript
 			}
 			
 			typeDic.registerType(token,type,expression);
+		}
+
+		internal override ScriptObject GetObject(string text, ScanList infos, ScanResult result)
+		{
+			
+			var v=base.GetObject(text, infos, result);
+			return v;
 		}
 
 		public void registerFuncOverride(string Token,TypeGroup type,MethodInfo expMaker)
@@ -175,15 +186,23 @@ namespace DVLib.LabDataHelper.DVScript
 		}
 		public override void registerDefault()
 		{
-			register(new ScriptInfo("+",max-4,NaiveMath(Expression.Add)));
+			register(new ScriptInfo("+",max-4,NaiveMath("op_Addition",Expression.Add)));
 			register(new ScriptInfo("-", max - 3, Subtract()));
-			register(new ScriptInfo("*", max - 2, NaiveMath(Expression.Multiply)));
-			register(new ScriptInfo("/", max - 2, NaiveMath(Expression.Divide)));
-			register(new ScriptInfo("%", max - 2, NaiveMath(Expression.Modulo)));
+			register(new ScriptInfo("*", max - 2, NaiveMath("op_Multiply", Expression.Multiply)));
+
+			register(new ScriptInfo(">", max - 4, NaiveMath("op_GreaterThan", Expression.GreaterThan,(a,b)=>typeof(bool))));
+			register(new ScriptInfo("<", max - 4, NaiveMath("op_LessThan", Expression.LessThan, (a, b) => typeof(bool))));
+			register(new ScriptInfo(">=", max - 4, NaiveMath("op_GreaterThanOrEqual", Expression.GreaterThanOrEqual, (a, b) => typeof(bool))));
+            register(new ScriptInfo("<=", max - 4, NaiveMath("op_LessThanOrEqual", Expression.LessThanOrEqual, (a, b) => typeof(bool))));
+			register(new ScriptInfo("==", max - 4, NaiveMath("op_Equality", Expression.Equal, (a, b) => typeof(bool))));
+
+
+			register(new ScriptInfo("/", max - 2, NaiveMath("op_Division",Expression.Divide)));
+			register(new ScriptInfo("%", max - 2, NaiveMath("op_Modulus",Expression.Modulo)));
 			register(new ScriptInfo("^", max - 1, LR<double, double, double>((a, b) => Math.Pow(a,b),true)));
-			register(new ScriptInfo("*-", max - 2, NaiveMath(Negate(Expression.Multiply))));
-			register(new ScriptInfo("/-", max - 2, NaiveMath(Negate(Expression.Divide))));
-			register(new ScriptInfo("%-", max - 2, NaiveMath(Negate(Expression.Modulo))));
+			register(new ScriptInfo("*-", max - 2, NaiveMath("op_Multiply", Negate(Expression.Multiply))));
+			register(new ScriptInfo("/-", max - 2, NaiveMath("op_Division",Negate(Expression.Divide))));
+			register(new ScriptInfo("%-", max - 2, NaiveMath("op_Modulus",Negate(Expression.Modulo))));
 			register(new ScriptInfo("^-", max - 1, LR<double, double, double>((a, b) => Math.Pow(a, -b), true)));
 			register(new ScriptInfo("sin", max , Func<double,double>((a) => Math.Sin(a), true)));
 			register(new ScriptInfo("cos", max, Func<double, double>((a) => Math.Cos(a), true)));
@@ -203,8 +222,13 @@ namespace DVLib.LabDataHelper.DVScript
 			register(new ScriptInfo("=", 1, EQ()).setReverse());
 			register(new ScriptInfo("{",max+1,Block()));
 			register(new ScriptInfo("return",2, Return()));
-			register(new ScriptInfo(".", max, Call()));
-			
+			register(new ScriptInfo(".", max, Call()).setContition((s, i) => i + 1 < s.Length && !s[i+1].isNumber()));
+
+			register(new ScriptInfo("true", max, Const<bool>(true)));
+			register(new ScriptInfo("false", max, Const<bool>(false)));
+
+			register(new ScriptInfo("Math", max,ClasS( typeof(Math))));
+
 			registerType("double",typeof(double),Expression.Constant(0.0));
 			registerType("float",typeof(float), Expression.Constant(0f));
 			registerType("int",typeof(int), Expression.Constant(0));
@@ -217,12 +241,17 @@ namespace DVLib.LabDataHelper.DVScript
 			registerType("ushort", typeof(ushort), Expression.Constant((ushort)0));
 			registerType("ulong", typeof(ulong), Expression.Constant((ulong)0));
 			registerType("char", typeof(char), Expression.Constant((char)0));
+			registerType("byte", typeof(byte), Expression.Constant((byte)0));
 			registerType("object", typeof(object), Expression.Constant(null));
+
+			registerType("Vector3", typeof(Vector3), Expression.Constant(null));
 
 			registerType("void", typeof(void),null);
 			register(new ScriptInfo("string", max, Func<object, string>(o => o.ToString(),true)));
 			registerFuncOverride("+", typeof(string), typeof(string).GetMethod("Concat", new[] {typeof(string),typeof(string) } ));
 
+			addTokenIgnore((s, i) => s[i] == '"', (s, i) => s[i] == '"');
+			addTokenIgnore((s, i) => s[i] == '.' && i + 1 < s.Length && !s[i + 1].isNumber(), (s, i) => s[i] == '@' || s[i] == '(');
 		}
 
 
@@ -261,6 +290,7 @@ namespace DVLib.LabDataHelper.DVScript
 			Helper.clean(ref text);
 			List<ScanInfo> info = new();
 			var r = ScanForOperators(ref text, info);
+
 			var go = GetObject(text, info, r);
 			popStack(out var v);
 			resetDepth();
@@ -318,18 +348,26 @@ namespace DVLib.LabDataHelper.DVScript
 
 		public override ScriptObject getBaseType(string s)
 		{
-
+			if (s.Length==0)
+			{
+				return new RootElementScript(typeof(void), Expression.Empty());
+			}
 			try
 			{
 				Expression c=null;
-				if(withPoint(s) || s.EndsWith('d')||s.EndsWith("D"))
+				if(withPoint(s) )
 				{
                 double d=double.Parse(s);
 			    c = Expression.Constant(d);
 				}
+				else if(s.EndsWith('d') || s.EndsWith("D"))
+				{
+					double f = float.Parse(s.Substring(0, s.Length - 1));
+					c = Expression.Constant(f);
+				}
 				else if(s.EndsWith('f')||s.EndsWith("F"))
 				{
-				float f=float.Parse(s);
+				float f=float.Parse(s.Substring(0,s.Length-1));
 			    c = Expression.Constant(f);
 				}
 				else
@@ -339,7 +377,7 @@ namespace DVLib.LabDataHelper.DVScript
 				}
 
 				if(c!=null)
-				return new RootElementScriptObject(c.Type,c);
+				return new RootElementScript(c.Type,c);
 			}
 			catch
 			{
@@ -351,7 +389,7 @@ namespace DVLib.LabDataHelper.DVScript
 				s = s.TrimEnd('"');
 			}
 
-			return ScriptObject.ConstString(s).setReturnType(typeof(string));
+			return ScriptObject.ConstString(s);
 
 		}
 
