@@ -26,18 +26,7 @@ namespace DVLib.LabDataHelper.DVScript
 			this.TokenEndCount=c;
 			return this;
 		}
-		public override ScriptInfo setCondition(ObjContition objContition)
-		{
-			base.setCondition(objContition);
-
-			return this;
-		}
-		public override ScriptInfo setNoInstance()
-		{
-			base.setNoInstance();
-
-			return this;
-		}
+	
 		public ScriptInfo setReverse()
 		{
 			this.reverse = true;	

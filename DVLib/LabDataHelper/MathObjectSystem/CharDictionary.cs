@@ -40,13 +40,14 @@ namespace DVLib.LabDataHelper.MathObjectSystem
 		public bool match(string name,out T value,out string key,int head=0)
 		{
 		
-			if (valuePairs.TryGetValue(name[head],out CharDictionary<T> cd))
+		if (valuePairs.TryGetValue(name[head],out CharDictionary<T> cd))
 			{
 				if (cd.match(name.AsSpan(head),out value,out key))
 				{
 					return true;
 				}
 			}
+		
 
 
 			

@@ -1,6 +1,5 @@
 ﻿using Images;
 using MathBase;
-using SixLabors.ImageSharp.ColorSpaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 namespace Images
 {
 
+
+
 	public unsafe struct PixelReader
 	{
 		byte* head;
@@ -52,16 +54,16 @@ namespace Images
 		readonly int width;
 		readonly int height;
 
-		public Color32* this[int x, int y]
+		public Color32ARGB* this[int x, int y]
 		{
 			
 			get
 			{
-				return ((Color32*)(intP+ x + width *y));
+				return ((Color32ARGB*)(intP+ x + width *y));
 			}
 			set
 			{
-				*((Color32*)(intP + x + width*y))=*value; 
+				*((Color32ARGB*)(intP + x + width*y))=*value; 
 			}
 		}
 		}

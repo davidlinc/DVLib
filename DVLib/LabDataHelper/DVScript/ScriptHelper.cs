@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using ScanInfo = DVLib.LabDataHelper.ScanInfo<DVLib.LabDataHelper.DVScript.ScriptObject, DVLib.LabDataHelper.DVScript.ScriptInfo, DVLib.LabDataHelper.DVScript.ScriptManager>;
 using ScriptF = DVLib.LabDataHelper.Factory<DVLib.LabDataHelper.DVScript.ScriptObject, DVLib.LabDataHelper.DVScript.ScriptInfo, DVLib.LabDataHelper.DVScript.ScriptManager>;
 using InfoList = System.Collections.Generic.List<DVLib.LabDataHelper.DVScript.ScriptInfo>;
-using ScanList = System.Collections.Generic.List<DVLib.LabDataHelper.ScanInfo<DVLib.LabDataHelper.DVScript.ScriptObject, DVLib.LabDataHelper.DVScript.ScriptInfo, DVLib.LabDataHelper.DVScript.ScriptManager>>;
+using ScanList =DVLib.LabDataHelper.SList<DVLib.LabDataHelper.ScanInfo<DVLib.LabDataHelper.DVScript.ScriptObject, DVLib.LabDataHelper.DVScript.ScriptInfo, DVLib.LabDataHelper.DVScript.ScriptManager>>;
 using DVOSLib;
 using static DVLib.LabDataHelper.DVScript.ScriptObject;
 using static DVLib.LabDataHelper.DVScript.ScriptManager;
@@ -72,7 +72,7 @@ namespace DVLib.LabDataHelper.DVScript
 			ParameterExpression ee = e;
 			return new ScriptInfo(name, max,
 
-				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
 
 					return new VarScript(type, ee).setCheck(check);
@@ -109,6 +109,53 @@ namespace DVLib.LabDataHelper.DVScript
 		{
 			return Expression.Add(a, b,StringConcat);
 		}
+
+		internal static ScriptF IncrementAssign()
+		{
+			
+			return
+
+				(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				{
+					var v = ScriptInfo.solveLR(text, ois, infos, manager);
+
+					if (v[0].name.Length>0)
+					{
+						var obj = manager.GetObject(v[0].name, v[0].infos, r);
+
+						return new ScriptObject<E>(obj.returnType, e => Expression.PostIncrementAssign(e), obj);
+					}
+					else
+					{
+						var obj = manager.GetObject(v[1].name, v[1].infos, r);
+						return new ScriptObject<E>(obj.returnType, e => Expression.PreIncrementAssign(e), obj);
+					}
+				};
+		}
+		internal static ScriptF DecrementAssign()
+		{
+
+			return
+
+				(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				{
+					var v = ScriptInfo.solveLR(text, ois, infos, manager);
+
+					if (v[0].name.Length > 0)
+					{
+						var obj = manager.GetObject(v[0].name, v[0].infos, r);
+
+						return new ScriptObject<E>(obj.returnType, e => Expression.PostDecrementAssign(e), obj);
+					}
+					else
+					{
+						var obj = manager.GetObject(v[1].name, v[1].infos, r);
+						return new ScriptObject<E>(obj.returnType, e => Expression.PreDecrementAssign(e), obj);
+					}
+				};
+		}
+
+
 		internal static ScriptF NaiveMath(string name,ExpMaker<E, E> expMaker,Func<Type,Type,Type> dfType=null)
 		{
 			if(dfType==null)
@@ -117,7 +164,7 @@ namespace DVLib.LabDataHelper.DVScript
 			}
 			return
 
-				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
 					var s = ScriptInfo.solveLR(text, ois, infos, manager);
 					var A = manager.GetObject(s[0].name, s[0].infos, r);
@@ -175,9 +222,9 @@ namespace DVLib.LabDataHelper.DVScript
 		internal static ScriptF Subtract()
 		{
 			return
-(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 {
-if (ois.position == 0)
+if (ois.Position == 0)
 {
 	var s = ScriptInfo.solveR(text, ois, infos, manager);
 	var A = manager.GetObject(s.name, s.infos, r);
@@ -231,7 +278,7 @@ else
 		{
 			return
 
-			(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+			(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 			{
 
 				return new RootElementScript(typeof(void), Expression.Empty());
@@ -245,7 +292,7 @@ else
 		{
 			return
 
-			(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+			(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 			{
 
 				var s = ScriptInfo.solveFunc(text, ois, infos, manager);
@@ -267,7 +314,7 @@ else
 		{
 			return
 
-				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				(string text, ScanInfo ois,SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
 
 					var s = ScriptInfo.solveLR(text, ois, infos, manager);
@@ -336,7 +383,7 @@ else
 			return
 
 
-					(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 					{
 
 						var s = ScriptInfo.solveR(text, ois, infos, manager);
@@ -361,7 +408,7 @@ else
 			return
 
 
-					(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 					{
 
 						return new ClassScript(t);
@@ -373,7 +420,7 @@ else
 			return
 
 
-					(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 					{
 						var v=ScriptInfo.solveFunc(text, ois, infos, manager);
 						ScriptObject[] scriptObjects=new ScriptObject[v.Length];
@@ -400,58 +447,9 @@ else
 					};
 		}
 
-		public static List<ScanInfo<T, I, M>> Slice<T,I,M>(this List<ScanInfo<T, I, M>> list,int index,int length=-1,int levelChange=0,bool inplace=true) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
+		static (string instance,SList<ScanInfo> IInfo,string name, (string name,SList<ScanInfo> infos)[]Params)?slove_call_(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager)
 		{
-			List<ScanInfo<T, I, M>> result = new();
-			int start = index;
-			int end=index+length;
-			bool toEnd = length < 0;
-			ScanInfo<T, I, M> info;
-			foreach (var s in list) {
-
-				if(s.position>=start&&(toEnd||( s.position<end)))
-				{
-					info = inplace ? s : s.getCopy();
-					result.Add( info);
-					info.position -= index;
-					info.level += levelChange;
-				}
-			}
-			return result;
-		}
-		public static List<ScanInfo<T, I, M>> Slice<T, I, M>(this  List<ScanInfo<T, I, M>> list, IList< (int index, int length)> pos , int levelChange = 0, bool inplace = true) where I : ObjectInfo<T, I, M>, new() where M : ObjectManager<T, I, M>
-		{
-			List<ScanInfo<T, I, M>> result = new();
-			int order = 0;
-			var pair = pos[0];
-
-			int start = pair.index;
-			int end = pair.index + pair.length;
-			bool toEnd = pair.length < 0;
-
-			ScanInfo<T, I, M> info;
-			foreach (var s in list)
-			{
-				if(s.position>=end)
-				{	order++;
-					pair = pos[order];
-					start = pair.index;
-				    end = pair.index + pair.length;
-					toEnd = pair.length < 0;
-				}
-				if (s.position >= start && (toEnd || (s.position < end)))
-				{
-					info = inplace ? s : s.getCopy();
-					result.Add(info);
-					info.position -= start;
-					info.level += levelChange;
-				}
-			}
-			return result;
-		}
-		static (string instance,List<ScanInfo> IInfo,string name, (string name,List<ScanInfo> infos)[]Params)?slove_call_(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager)
-		{
-			int dotPos = ois.position;
+			int dotPos = ois.Position;
 			int endPos=-1;
 			char endToken='0';
 			char c;
@@ -488,7 +486,7 @@ else
 			return
 
 
-					(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 					{
 						var v=slove_call_(text,ois,infos,manager);
 						if (v.HasValue)
@@ -564,10 +562,13 @@ else
 			return
 
 
-					(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
-					{
-
-						int end = text.AsSpan().findEnd('{', '}');
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{ 
+					
+						int end = infos[ois.Index+ois.NextOffset].Position;
+						
+						
+						//int end = text.AsSpan().findEnd('{', '}');
 						string block = text.Substring(0, end + 1);
 						List<int> pos = new List<int>();
 						string[] ss = block.Substring(1, end).cutZeroLevel(';', manager.levelGetter, pos);
@@ -596,7 +597,6 @@ else
 						var parameters = manager.peakParam();
 						manager.popStack(out var remove);
 
-
 						return new MultiScript(scriptObjects[scriptObjects.Length-1].returnType, 
 
 						(ss) =>
@@ -621,12 +621,368 @@ else
 
 
 		}
+		internal static ScriptF While()
+		{
+			return
+
+
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+						var bracket0 = infos[ois.Index + 1];
+						var bracket1 = infos[bracket0.Index + bracket0.NextOffset];
+						string conditionS = text.Substring(bracket0.Position + 1, bracket1.Position - bracket0.Position - 1);
+						var condition = infos.Slice(bracket0.Position + 1, bracket1.Position - bracket0.Position - 1, -1);
+
+						string contextS = text.Substring(bracket1.Position + 1);
+						var context = infos.Slice(bracket1.Position + 1);
+						var cd = manager.GetObject(conditionS, condition, r);
+						manager.pushLoopLabel();
+					    manager.peakLoopLabel(out var loop);
+						var body = manager.GetObject(contextS,context,r);
+						manager.popLoopLabel(out var loop_);
+
+					
+						return new ScriptObject<E, E>(cd.returnType, (e1, e2) =>
+						{
+							return Expression.Loop(Expression.IfThenElse(e1, e2, Expression.Break(loop.Break)),loop.Break,loop.Continue);
+						}
+						, cd, body);
+
+						throw new ParamsCountMismatchException();
+					};
+		}
+		internal static ScriptF For()
+		{
+			return
+
+
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+						manager.pushStack();
+
+						var bracket0 = infos[ois.Index + 1];
+						var bracket1 = infos[bracket0.Index + bracket0.NextOffset];
+
+						string cdds = text.Substring(bracket0.Position + 1, bracket1.Position - bracket0.Position - 1);
+						var cdd = infos.Slice(bracket0.Position + 1, bracket1.Position - bracket0.Position - 1, -1);
+
+						var f1 = cdd.getFirstWithLevel(0, ";", ois.Level );
+						var f2=cdd.getFirstWithLevel(f1.index+1,";",ois.Level);
+				
+
+
+						var intis = cdds.Substring(0, f1.t.Position);
+						var inti = cdd.Slice(0, f1.t.Position);
+
+						var conditionS = cdds.Substring(f1.t.Position + 1, f2.t.Position - f1.t.Position - 1);
+						//var condition= cdd.Slice(f1.t.Position + 1, f2.t.Position - f1.t.Position - 1);
+
+						var irs= cdds.Substring(f2.t.Position+1);
+						var ir=cdd.Slice(f2.t.Position + 1);
+
+
+
+						string contextS = text.Substring(bracket1.Position + 1);
+						var context = infos.Slice(bracket1.Position + 1);
+
+						var inti_ = manager.GetObject(intis, inti, r);
+						var cd = manager.GetObject(conditionS);
+						var ir_ = manager.GetObject(irs);
+
+
+						manager.pushLoopLabel();
+						manager.peakLoopLabel(out var loop);
+						var body = manager.GetObject(contextS);
+						manager.popLoopLabel(out var loop_);
+
+						var v = manager.peakParam();
+
+						manager.popStack(out var remove);
+						return new ScriptObject<E, E, E, E>(typeof(void), (a, b, c, d) => {
+
+						return	Expression.Block(v, a, Expression.Loop(Expression.Block(Expression.IfThenElse(b, d, Expression.Break(loop.Break)),c), loop.Break, loop.Continue));
+						
+						
+						}, inti_, cd, ir_, body);
+
+
+						throw new ParamsCountMismatchException();
+					};
+		}
+		internal static ScriptF Break()
+		{
+			return
+
+
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+						manager.peakLoopLabel(out var loop);
+						return new RootElementScript(typeof(void), Expression.Break(loop.Break));
+
+						throw new ParamsCountMismatchException();
+					};
+		}
+		internal static ScriptF Continue()
+		{
+			return
+
+
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+						manager.peakLoopLabel(out var loop);
+						return new RootElementScript(typeof(void), Expression.Break(loop.Continue));
+
+						throw new ParamsCountMismatchException();
+					};
+		}
+		internal static ScriptF If()
+		{
+			return
+
+
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+						//DVOS.writeLine(text);
+						var bracket0 = infos[ois.Index + 1];
+						var bracket1 = infos[bracket0.Index+bracket0.NextOffset];
+						string conditionS = text.Substring(bracket0.Position + 1, bracket1.Position-bracket0.Position - 1);
+						var condition=infos.Slice(bracket0.Position+1, bracket1.Position - bracket0.Position - 1, -1);
+
+						var Else = infos.getFirstWithLevel(ois.Index + 1, "else", ois.Level, ois);
+						if(Else.index>=0)
+						{
+							
+							string contextS_ = text.Substring(bracket1.Position + 1,Else.t.Position-bracket1.Position-1);
+							var context_ = infos.Slice(bracket1.Position + 1, Else.t.Position - bracket1.Position - 1);
+
+							string els = text.Substring(Else.t.Position + 4);
+                           	var el = infos.Slice(Else.t.Position+4);
+							var cd_ = manager.GetObject(conditionS, condition, r);
+							var body_ = manager.GetObject(contextS_, context_, r);
+							var el_ = manager.GetObject(els, el, r);
+
+							return new ScriptObject<E, E, E>(typeof(void), (a, b, c) => Expression.IfThenElse(a, b, c), cd_, body_, el_);
+						}
+
+						string contextS = text.Substring(bracket1.Position + 1);
+						var context = infos.Slice(bracket1.Position + 1);
+
+						var cd = manager.GetObject(conditionS, condition, r);
+						var body=manager.GetObject(contextS, context, r);
+						return new ScriptObject<E, E>(typeof(void), (e1, e2) =>
+						{
+							return Expression.IfThen(e1,e2);
+						}
+						, cd, body);
+
+						throw new ParamsCountMismatchException();
+					};
+		}
+		internal static ScriptF NewArray(Type type)
+		{
+			
+			return
+
+
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+						var e0 = infos[ois.Index + 1];
+						var e = infos[e0.Index + e0.NextOffset];
+						var count= infos.getContext(text,e0, e);
+						var counts = count.list.Split(count.Item1, ",");
+
+						ScriptObject[] scriptObjects = new ScriptObject[counts.Length];
+                        for (int  i= 0; i<scriptObjects.Length; i ++)
+                        {
+							scriptObjects[i] = manager.GetObject(counts[i].name, counts[i].list, r);
+                        }
+
+						return new MultiScript(type.MakeArrayType(scriptObjects.Length), (os) => Expression.NewArrayBounds(type, os),scriptObjects);
+
+						//return new ScriptObject<E>(type.MakeArrayType(), (a) => Expression.NewArrayBounds(type, a), c);
+						throw new ParamsCountMismatchException();
+					};
+		}
+		internal static ScriptF NewGeneric(Type type,string TokenHead)
+		{
+
+			return
+
+
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+						
+						var e0 = infos[ois.Index + 2];
+						var e1 = infos[e0.Index + e0.NextOffset];
+
+						var b0 = infos[e1.Index + 1];
+						var b1 = infos[b0.Index + b0.NextOffset];
+
+						var typeS=text.Substring(TokenHead.Length,b0.Position-TokenHead.Length);
+						var type = infos.Slice(TokenHead.Length, b0.Position - TokenHead.Length);
+
+						var type_ = manager.getType(typeS, type);
+						var obj = infos.getContext(text, b0, b1);
+						var objs = obj.list.Split(obj.Item1, ",");
+
+						ScriptObject[] scriptObjects = new ScriptObject[objs.Length];
+						for(int i = 0;i<scriptObjects.Length;i++)
+						{
+							scriptObjects[i] = manager.GetObject(objs[i].Item1, objs[i].list, r);
+						}
+						var ty=scriptObjects.GetTypes();
+
+						if(b0.Token=="(")
+						{
+			var v=type_.type.GetConstructor(ty);
+
+
+						var p = v.GetParameters();
+						for (int i = 0; i < scriptObjects.Length; i++)
+						{
+							if (scriptObjects[i].returnType != p[i].ParameterType)
+							{
+								Type t = p[i].ParameterType;
+								scriptObjects[i] = new ScriptObject<E>(t, e => Convert(e, t), scriptObjects[i]);
+							}
+						}
+						return new MultiScript(type_.type, es =>
+					Expression.New(v, es)
+					, scriptObjects);
+						}
+						else if(b0.Token=="[")
+						{
+							return new MultiScript(type_.type.MakeArrayType(scriptObjects.Length), (os) => Expression.NewArrayBounds(type_.type, os), scriptObjects);
+
+						}
+
+
+						//var countS = text.Substring(ois.operatorInfo.mark.Length, e.Position - ois.operatorInfo.mark.Length);
+						//var count = infos.Slice(ois.operatorInfo.mark.Length, e.Position - ois.operatorInfo.mark.Length, -1);
+						//var c = manager.GetObject(countS, count, r);
+						//return new ScriptObject<E>(type.MakeArrayType(), (a) => Expression.NewArrayBounds(type, a), c);
+						throw new ParamsCountMismatchException();
+					};
+		}
+		internal static ScriptF NewG(Type Ge,params Type[] type)
+		{
+			Type t=Ge.MakeGenericType(type);
+			return New(t);
+		}
+		internal static ScriptF Index()
+		{
+			return
+
+
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+					
+						string instance=text.Substring(0,ois.Position);
+						var instanceL=infos.Slice(0, ois.Position);
+
+						var Ins = manager.GetObject(instance,instanceL, r);
+						var b0 =ois;
+						var b1=infos[b0.Index+b0.NextOffset];
+
+						var context = infos.getContext(text,b0, b1);
+						var indeX = context.list.Split(context.name, ",");
+
+						ScriptObject[] scriptObjects=new ScriptObject[indeX.Length];
+						
+						for(int i=0; i<indeX.Length; i++)
+						{
+							scriptObjects[i] = manager.GetObject(indeX[i].name, indeX[i].list, r);
+						}
+
+						var types=scriptObjects.GetTypes();
+						if(Ins.returnType.IsArray)
+						{
+							
+						
+							return new IndexScript(Ins.returnType.GetElementType(), (a, b) => { return Expression.ArrayAccess(a, b); },Ins,scriptObjects);
+						}
+						else
+						{
+							var v = Ins.returnType.GetProperty("Item",types);
+							return new IndexScript(v.PropertyType, (a, b) => { return Expression.MakeIndex(a,v ,b); }, Ins,scriptObjects);
+
+						}
+
+
+						throw new ParamsCountMismatchException();
+					};
+		}
+
+		internal static ScriptF Else()
+		{
+			return
+
+
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+						//var v = typeof(DVOS).GetMethod("writeLine");
+						//Expression.Lambda<Action>(Expression.IfThenElse(Expression.Constant(true), Expression.Call(null, v, Expression.Constant("a")), Expression.Call(null, v, Expression.Constant("b")))).Compile()();
+				
+						
+
+						var If = infos.getLastWithLevel(ois.Index - 1, "if", ois.Level);
+						var While = infos.getLastWithLevel(If.index - 1, "while", ois.Level);
+						if (While.index >= 0)
+						{
+							var bw0 = infos[While.index + 1];
+							var bw1 = infos[bw0.Index + bw0.NextOffset];
+							if (bw1.Index == If.index - 1)
+							{
+
+								return ScriptHelper.While()(text,While.t,infos,manager,r);
+
+							}
+						}
+						var bracket0 = infos[If.index + 1];
+						var bracket1 = infos[bracket0.Index + bracket0.NextOffset];
+
+
+						
+						
+
+						string conditionS = text.Substring(bracket0.Position + 1, bracket1.Position - bracket0.Position - 1);
+						var condition = infos.Slice(bracket0.Position + 1, bracket1.Position - bracket0.Position - 1, -1);
+
+						string contextS = text.Substring(bracket1.Position + 1,ois.Position-bracket1.Position-1);
+						var context = infos.Slice(bracket1.Position + 1, ois.Position - bracket1.Position - 1);
+
+						string contextS2 = text.Substring(ois.Position+4);
+						var context2 = infos.Slice(ois.Position+4);
+                   
+
+						var cd = manager.GetObject(conditionS);
+						var body = manager.GetObject(contextS);
+						var body2 = manager.GetObject(contextS2);
+
+						
+						
+						return new ScriptObject<E, E, E>(body.returnType, (a, b, c) => {return Expression.IfThenElse(a, b, c); }, cd, body, body2);
+
+						throw new ParamsCountMismatchException();
+					};
+		}
+		internal static ScriptF Empty()
+		{
+			return
+
+
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					{
+
+						throw new ParamsCountMismatchException();
+					};
+		}
 		internal static ScriptF EQ()
 		{
 			return
 
 
-					(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 					{
 
 						var v = ScriptInfo.solveLR(text, ois, infos, manager);
@@ -658,12 +1014,12 @@ else
 								{
 									for (int i = 0; i < paramCount; i++)
 									{
-										var v1 = manager.getName(args[i]);
+										var v1 = manager.getTypeAndName(args[i]);
 										scriptInfos[i] = manager.registerInStack(param(v1.name, v1.t.Type, out es[i]));
 									}
 								}
 
-								List<ScanInfo> scanInfos = new();
+								SList<ScanInfo> scanInfos = new();
 								var re = manager.ScanForOperators(ref v[1].name, scanInfos);
 								var obj = manager.GetObject(v[1].name, scanInfos, re);
 								var ge = obj.getExpression();
@@ -699,10 +1055,10 @@ else
 							var o = manager.GetObject(n.name, v[0].infos, r);
 
 							var o2 = manager.GetObject(v[1].name, v[1].infos, r);
-							if (o is VarScript)
+							if (o is IAssign)
 							{
 
-								var vr = (o as VarScript).setValue(o2);
+								var vr = (o as IAssign).setValue(o2);
 								//manager.peakParam().Add(vr.GetVarScript().getValue());
 								//return new ScriptObject<E, E>(o.returnType, (a, b) => Expression.Assign(a, b), o, o2);
 								return vr;
@@ -754,7 +1110,7 @@ else
 		{
 			return
 
-				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
 
 					var s = ScriptInfo.solveFunc(text, ois, infos, manager);
@@ -783,7 +1139,7 @@ else
 		{
 			return
 
-				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
 
 					var s = ScriptInfo.solveFunc(text, ois, infos, manager);
@@ -823,7 +1179,7 @@ else
 		{
 			return
 
-				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				(string text, ScanInfo ois,SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
 					var param = delegate_.Parameters;
 					int l = param.Count;
@@ -857,7 +1213,7 @@ else
 		{
 			return
 
-				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
 					var info = delegate_.GetMethodInfo();
 
@@ -915,7 +1271,7 @@ else
 		{
 			return
 
-				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
 
 					var s = ScriptInfo.solveFunc(text, ois, infos, manager);
@@ -943,7 +1299,7 @@ else
 
 				(string text, ScanInfo ois, ScanList infos, ScriptManager manager, ScanResult r) =>
 				{
-					if (ois.position == 0)
+					if (ois.Position == 0)
 					{
 						var s = ScriptInfo.solveR(text, ois, infos, manager);
 						Expression<Func<I1, O>> f = a => func1(a);
@@ -999,14 +1355,13 @@ else
 		{
 			return
 
-				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				(string text, ScanInfo ois,SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
-
+					var o = func.Target;
 					var s = ScriptInfo.solveFunc(text, ois, infos, manager);
-					Expression<Func<O>> f = () => func();
 					int t = s.Length;
 
-					return new RootElementScript(typeof(O), f);
+					return new RootElementScript(typeof(O), Expression.Call(o!=null?Expression.Constant(o):null,func.Method));
 
 
 				};
@@ -1017,11 +1372,12 @@ else
 		{
 			return
 
-				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
-
+					var o = func.Target;
 					var s = ScriptInfo.solveFunc(text, ois, infos, manager);
-					Expression<Func<I, O>> f = (a) => func(a);
+
+					//func.Method;
 					int t = s.Length;
 					
 					if (t > 0)
@@ -1035,7 +1391,7 @@ else
 						
 
 						{
-							return Expression.Invoke(f, a);
+							return Expression.Call(o!=null?Expression.Constant(o): null,func.Method, a);
 						}
 
 
@@ -1057,11 +1413,11 @@ else
 		{
 			return
 
-				(string text, ScanInfo ois, List<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
+				(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 				{
 
+					var o = func.Target;
 					var s = ScriptInfo.solveFunc(text, ois, infos, manager);
-					Expression<Func<I1, I2, O>> f = (a, b) => func(a, b);
 					int t = s.Length;
 					(var A,var B)=( manager.GetObject(s[0].name, s[0].infos, r), manager.GetObject(s[1].name, s[1].infos, r));
 
@@ -1077,7 +1433,7 @@ else
 
 					if (t > 1)
 					{
-						return new ScriptObject<E, E>(typeof(O), (a, b) => {return Expression.Invoke(f, a, b); },A,B );
+						return new ScriptObject<E, E>(typeof(O), (a, b) => {return Expression.Call(o != null ? Expression.Constant(o) : null,func.Method, a, b); },A,B );
 					}
 					else
 					{

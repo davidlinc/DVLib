@@ -14,6 +14,7 @@ using System.Numerics;
 using System.Runtime.Intrinsics.X86;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 namespace MathBase
 {
@@ -21,8 +22,8 @@ namespace MathBase
     {
 
 
-        public readonly double realPart;
-        public readonly double imaginaryPart;
+        public double realPart;
+        public double imaginaryPart;
         public static FieldInfo r;
         public static FieldInfo i;
         public static double PI = Math.PI;
@@ -102,41 +103,64 @@ namespace MathBase
             M1 = Avx.HorizontalAdd(M3, M4);
 			return Unsafe.Read<Complex>(&M1);
 		}
-    
 
+        public static double dot(Span<double> a, Span<double> b)
+        {
+            double r = 0;
+            for (var i = 0; i < a.Length; i++) { 
+            
+            r+= a[i] * b[i];
+            }
+            return r;
+        }
+
+		public static double dot2(Span<double> a, Span<double> b )
+        {
+            var M1 = Vector256<double>.Zero;
+
+            int left = a.Length % 4;
+            double result = 0;
+            var sa = MemoryMarshal.Cast<double, Vector256<double>>(a);
+			var sb = MemoryMarshal.Cast<double, Vector256<double>>(b);
+            
+			for (int i=0; i<sa.Length; i++)
+            {
+                M1 =Avx.Add( Avx.Multiply(sa[i], sb[i]),M1);
+            }
+            result = M1.GetElement(0)+M1.GetElement(1)+M1.GetElement(2)+M1.GetElement(3);
+            if(left>0)
+            {
+                for (int i=0,ind=a.Length-1;i<left;i++,ind--)
+                {
+
+                    result += a[ind] * b[ind];
+                }
+            }
+
+            return result;
+        }
 		public unsafe static Complex[] mul2(Complex[] a, Complex[] b)
         {
             Complex[] re = new Complex[a.Length];
-            int li = a.Length - 1;
-			fixed (Complex * a_=a,b_=b,re_=re)
-            {
+			int li = a.Length - 1;
+			
                 var M1 = new Vector256<double>();
                 var M2 = new Vector256<double>();
-				var M3= new Vector256<double>();
-				var M4 = new Vector256<double>();
-                Vector256<double>* sre = (Vector256<double>*)re_;
-				Vector256<double>* sa = (Vector256<double>*)a_;
-				Vector256<double>* sb= (Vector256<double>*)b_;
-                Span<Vector256<double>> span = MemoryMarshal.Cast<Complex, Vector256<double>>(re);
-                Complex* c1 = (Complex*)&M1;
-                Complex* c2 = c1+1;
-				var mask= Vector256.Create(0.0,-0.0,0.0,-0.0);
+
+            ReadOnlySpan<Vector256<double>> a_=MemoryMarshal.Cast<Complex,Vector256<double>>(a);
+			ReadOnlySpan<Vector256<double>> b_ = MemoryMarshal.Cast<Complex, Vector256<double>>(b);
+            Span<Vector256<double>> span = MemoryMarshal.Cast<Complex, Vector256<double>>(re);
+			var mask= Vector256.Create(0.0,-0.0,0.0,-0.0);
                 int t = a.Length>>1;
                 int left = a.Length - (t<<1 );
 				for (int i = 0; i < t; i++)
 					{
-                    M1 = Avx.LoadVector256((double*)(sa + i));
-					M2 = Avx.LoadVector256((double*)(sb + i));
-                    M1 = Avx.HorizontalAdd(Avx.Multiply(Avx.Xor(M1, mask), M2), Avx.Multiply(M1, Avx2.Permute4x64(M2, 0b10110001)));
-                    span[i] = M1;
-					//Avx.Store((double*)(sre + i),M1);
+				span[i] = Avx.HorizontalAdd(Avx.Multiply(Avx.Xor(a_[i], mask), b_[i]), Avx.Multiply(a_[i], Avx2.Permute4x64(b_[i], 0b10110001)));
 				}
                 if(left>0)
                 {
                     re[li] = a[li] * b[li];
                 }
-            }
-          
             return re;
         }
         public static Complex test;
@@ -453,13 +477,13 @@ namespace MathBase
         {
             return new Vector3i(-a.x, -a.y, -a.z);
         }
-        public static implicit operator Vector3i(Color32 color)
+        public static implicit operator Vector3i(Color32ARGB color)
         {
             return new Vector3i(color.r, color.g, color.b);
         }
-        public static implicit operator Color32(Vector3i color)
+        public static implicit operator Color32ARGB(Vector3i color)
         {
-            return new Color32((int)color.x, (int)color.y, (int)color.z);
+            return new Color32ARGB((int)color.x, (int)color.y, (int)color.z);
         }
         public double length()
         {
@@ -530,7 +554,9 @@ namespace MathBase
     }
     public struct Vector3 : ICopyObject<Vector3>, IxmlObject<Vector3>
     {
-
+  public double x;
+  public double y;
+  public double z;
      
         public  bool isZore{get{return  x == 0 && z == 0 && y != 0;} }
 
@@ -538,9 +564,7 @@ namespace MathBase
         public bool isOnY { get { return x == 0 && z == 0 && y != 0; } }
         public bool isOnX { get { return x != 0 && z == 0 && y == 0; } }
         public bool isOnZ { get { return x == 0 && z != 0 && y == 0; } }
-        public readonly double x;
-        public readonly double y;
-        public readonly double z;
+      
 
         public Vector3(double x, double y, double z)
         {
@@ -650,17 +674,17 @@ namespace MathBase
         {
             return new Vector3(-a.x, -a.y, -a.z);
         }
-        public static implicit operator Vector3(Color32 color)
+        public static implicit operator Vector3(Color32ARGB color)
         {
             return new Vector3(color.r, color.g, color.b);
-        }
-        public static implicit operator Vector3((double ,double,double) vec)
+		}
+		public static implicit operator Vector3((double ,double,double) vec)
 		{
             return new Vector3(vec.Item1, vec.Item2, vec.Item3);
 		}
-        public static implicit operator Color32(Vector3 color)
+        public static implicit operator Color32ARGB(Vector3 color)
         {
-            return new  Color32 ((int)color.x, (int)color.y, (int)color.z);
+            return new  Color32ARGB ((int)color.x, (int)color.y, (int)color.z);
         }
         public double length()
         {
@@ -923,8 +947,8 @@ namespace MathBase
     }
     public struct Vector2:IxmlObject<Vector2>
     {
-        public readonly double X;
-        public readonly double Y;
+        public double X;
+        public double Y;
         public static readonly  Vector2 Xaxis  = new Vector2(1, 0);
         public static readonly Vector2 Yaxis  = new Vector2(0, 1);
 

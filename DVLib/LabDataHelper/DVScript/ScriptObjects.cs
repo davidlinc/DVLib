@@ -97,7 +97,7 @@ namespace DVLib.LabDataHelper.DVScript
 		{
 			var aa = a.getExpression(force);
 			var bb = b.getExpression(force);
-			var cc = b.getExpression(force);
+			var cc = c.getExpression(force);
 			var List = new HashSet<ParameterExpression>();
 			foreach (var pp in aa.Item2)
 			{

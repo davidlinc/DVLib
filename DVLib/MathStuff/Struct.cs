@@ -10,8 +10,7 @@ using DVOSLib;
 using System.Xml;
 using MachineLearning;
 using System.Runtime.InteropServices;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using NewPhysics;
 
 namespace MathBase
 { 
@@ -187,6 +186,19 @@ public class Map<T>
 			return x>=0&&y>=0&&x<Width && y<Height;
 		}
 
+		public virtual Map<T> slice(int x,int y,int nx,int ny)
+		{
+			Map<T> map = new Map<T>(nx, ny);
+			var v = map.getSpan();
+			var vt = getSpan();
+			for(int i=0;i<nx;i++)
+			{
+				vt.Slice((i+x) * Height + y, ny).CopyTo(v.Slice(i * ny, ny));
+			}
+
+			return map;
+
+		}
 		public Map<T> getBox(int x,int y,int width,int height)
 		{
 			Map<T> map = new Map<T>(width, height);
@@ -694,10 +706,10 @@ for (int i = 0; i < ll; i++)
 			}
 		});
 	}
-	public T this[int x, int y]
+	public ref T this[int x, int y]
 	{
-		get { return Data[x, y]; }
-		set { Data[x, y] = value; }
+		get { return ref Data[x, y]; }
+		//set { Data[x, y] = value; }
 	}
 
 	public T[] getArray()

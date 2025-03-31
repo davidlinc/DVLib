@@ -5,14 +5,15 @@ using E = System.Linq.Expressions.Expression;
 namespace DVLib.LabDataHelper.DVScript
 {
 
-	internal interface ISetter
+	internal interface IAssign
 	{
 		AssignScript setValue(ScriptObject value);
 	}
 	public delegate Expression SingleExpMaker(Expression a);
 	public delegate Expression BinaryExpMaker(Expression a,Expression b);
 	public delegate Expression TriExpMaker(Expression a, Expression b, Expression c);
-	public delegate Expression MutiExpMaker(params Expression[] a);
+	public delegate Expression MultiExpMaker(params Expression[] a);
+	public delegate Expression MultiExpMaker<T>(T a,params Expression[]b);
 	public delegate T Function<I, T>(params I[] Params); 
 	public abstract class ScriptObject
 	{
@@ -111,15 +112,11 @@ namespace DVLib.LabDataHelper.DVScript
 
 	internal class AssignScript : ScriptObject<E, E>
 	{
-		internal AssignScript(Type type, VarScript a, ScriptObject b) : base(type, (e1, e2) => Expression.Assign(e1,e2), a, b)
+		internal AssignScript(Type type, ScriptObject a, ScriptObject b) : base(type, (e1, e2) => Expression.Assign(e1,e2), a, b)
 		{
 
 		}
 
-		public VarScript GetVarScript()
-		{
-			return (VarScript)base.a;
-		}
 	}
 	internal class ReturnScript : ScriptObject<E>
 	{
@@ -133,7 +130,7 @@ namespace DVLib.LabDataHelper.DVScript
 			return label;
 		}
 	}
-	internal class VarScript : RootElementScript,ISetter
+	internal class VarScript : RootElementScript,IAssign
 	{
 		public VarScript(Type type, ParameterExpression expression) : base(type, expression)
 		{
@@ -141,7 +138,7 @@ namespace DVLib.LabDataHelper.DVScript
 
 		public virtual AssignScript  setValue(ScriptObject value)
 		{
-			return  new AssignScript(typeof(void),this,value);
+			return  new AssignScript(returnType,this,value);
 			//return new SourceScriptObject( typeof(void), Expression.Assign(expression, value.getExpression().Item1)); 
 		}
 
@@ -150,6 +147,17 @@ namespace DVLib.LabDataHelper.DVScript
 		}
 	}
 
+	internal class IndexScript : MultiScript<E>,IAssign
+	{
+		internal IndexScript(Type type, MultiExpMaker<E> expMaker, ScriptObject script, params ScriptObject[] expressions) : base(type, expMaker, script, expressions)
+		{
+		}
+
+		public AssignScript setValue(ScriptObject value)
+		{
+			return new AssignScript(returnType,this, value);
+		}
+	}
 	internal class ClassScript:ScriptObject
 	{
 		public Type ClassType {  get;private set; }
@@ -189,14 +197,68 @@ namespace DVLib.LabDataHelper.DVScript
 
 		}
 	}
+	internal class MultiScript<T> : ScriptObject
+	{
+		ScriptObject obj;
+		ScriptObject[] expressions;
+		MultiExpMaker<T> expMaker;
 
+		internal MultiScript(Type type, MultiExpMaker<T> expMaker,ScriptObject script, params ScriptObject[] expressions) : base(type)
+		{
+			this.obj = script;
+			this.expMaker = expMaker;
+			this.expressions = expressions;
+		}
+
+		(Expression[], HashSet<ParameterExpression>) GetExpressions(bool force = false)
+		{
+			var es = new Expression[expressions.Length];
+			HashSet<ParameterExpression> list = new HashSet<ParameterExpression>();
+			(Expression, HashSet<ParameterExpression>) p;
+			for (int i = 0; i < es.Length; i++)
+			{
+
+				if (expressions[i] == null)
+				{
+					es[i] = null;
+					continue;
+				}
+
+				p = expressions[i].
+				getExpression(force);
+				es[i] = p.Item1;
+				foreach (var pp in p.Item2)
+				{
+					list.Add(pp);
+				}
+			}
+			return (es, list);
+		}
+		public override (Expression, HashSet<ParameterExpression>) getExpression(bool force = false)
+		{
+			var v = GetExpressions(force);
+			var v2=obj.getExpression(force);
+			HashSet<ParameterExpression> h = new();
+			foreach(var ve in v.Item2 )
+			{
+				h.Add(ve);
+			}
+			foreach (var ve in v2.Item2)
+			{
+				h.Add(ve);
+			}
+			return (expMaker((T)(object)v2.Item1,v.Item1),h);
+		}
+
+
+	}
 	internal class MultiScript : ScriptObject
 	{
 
 		ScriptObject[] expressions;
-		MutiExpMaker expMaker;
+		MultiExpMaker expMaker;
 
-		internal MultiScript(Type type, MutiExpMaker expMaker,params ScriptObject[] expressions):base(type)
+		internal MultiScript(Type type, MultiExpMaker expMaker,params ScriptObject[] expressions):base(type)
 		{
 			this.expMaker = expMaker;
 			this.expressions = expressions;

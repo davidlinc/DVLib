@@ -49,7 +49,6 @@ namespace MathBase
 		}
 	}
 
-
 	public static class FFTHelper
 	{
 		public static bool useMultiThreads = true;
@@ -187,7 +186,7 @@ namespace MathBase
 			return complices;
 		}
 		/// <summary>
-		/// 二维快速傅里叶反变换
+		/// 快速傅里叶反变换
 		/// </summary>
 		/// <param name="map"></param>
 		/// <returns></returns>
@@ -591,7 +590,7 @@ namespace MathBase
 				listHelperR[i] = getFFT(N, -1);
 			}
 		}
-		public static ComplexMap move(this ComplexMap map, double dx,double dy)
+		public static ComplexMap phaseMove(this ComplexMap map, double dx,double dy)
 		{
 			Complex[,] data = map.Data;
 			Complex thetaX = -Math.PI * 2 * dx / map.Width*Complex.I;
@@ -615,8 +614,28 @@ namespace MathBase
 			}
 			return map1;
 		}
+		public static ComplexMap phaseMove_(this ComplexMap map, double dx, double dy)
+		{
+			Complex[,] data = map.Data;
+			Complex thetaX = -Math.PI * 2 * dx / map.Width * Complex.I;
+			Complex thetaY = -Math.PI * 2 * dy / map.Height * Complex.I;
+			Complex tx = 0;
+			Complex ty;
+			for (int i = 0; i < map.Width; i++)
+			{
 
-		
+				ty = 0;
+				for (int j = 0; j < map.Height; j++)
+				{
+
+					data[i, j] = data[i, j] * Complex.Exp(tx + ty);
+					ty += thetaY;
+				}
+				tx += thetaX;
+			}
+			return map;
+		}
+
 		static FFTHelper()
 		{
 			for (int i = 0; i < preLength; i++)
