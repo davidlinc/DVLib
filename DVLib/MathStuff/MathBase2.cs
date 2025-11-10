@@ -581,20 +581,23 @@ namespace MathBase
             z = (color)
         & 0xff;
         }
-
-        public static Vector3 operator +(Vector3 a, Vector3 b)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator +(Vector3 a, Vector3 b)
         {
             return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z);
-        }
-        public static Vector3 operator *(double a, Vector3 b)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator *(double a, Vector3 b)
         {
             return new Vector3(a * b.x, a * b.y, a * b.z);
-        }
-        public static Vector3 operator *(int a, Vector3 b)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator *(int a, Vector3 b)
         {
             return new Vector3(a * b.x, a * b.y, a * b.z);
-        }
-        public static Vector3 operator *(Vector3 b, double a)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator *(Vector3 b, double a)
         {
             return new Vector3(a * b.x, a * b.y, a * b.z);
         }
@@ -656,42 +659,50 @@ namespace MathBase
             double b = (x0 * y1 - x1 * y0) / (x2 * y1 - x1 * y2);
 			return new double[]{ a,b};
 			}
-            
-        }
-        public static Vector3 operator /(Vector3 b, double a)
+
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator /(Vector3 b, double a)
         {
             return new Vector3(b.x / a, b.y / a, b.z / a);
-        }
-        public static Vector3 operator *(Vector3 b, int a)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator *(Vector3 b, int a)
         {
             return new Vector3(a * b.x, a * b.y, a * b.z);
-        }
-        public static Vector3 operator -(Vector3 a, Vector3 b)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator -(Vector3 a, Vector3 b)
         {
             return new Vector3(a.x - b.x, a.y - b.y, a.z - b.z);
-        }
-        public static Vector3 operator -(Vector3 a)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator -(Vector3 a)
         {
             return new Vector3(-a.x, -a.y, -a.z);
-        }
-        public static implicit operator Vector3(Color32ARGB color)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static implicit operator Vector3(Color32ARGB color)
         {
             return new Vector3(color.r, color.g, color.b);
 		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static implicit operator Vector3((double ,double,double) vec)
 		{
             return new Vector3(vec.Item1, vec.Item2, vec.Item3);
 		}
-        public static implicit operator Color32ARGB(Vector3 color)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static implicit operator Color32ARGB(Vector3 color)
         {
             return new  Color32ARGB ((int)color.x, (int)color.y, (int)color.z);
         }
-        public double length()
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double length()
         {
             return Math.Sqrt(x * x + y * y + z * z);
         }
-
-        public double length_2()
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double length_2()
         {
             return x * x + y * y + z * z;
         }
@@ -700,16 +711,18 @@ namespace MathBase
         {
             return new Vector3(x * d, y * d, z * d);
         }
-
-        public Vector3 add(Vector3 other)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Vector3 add(Vector3 other)
         {
             return new Vector3(x + other.x, y + other.y, z + other.z);
-        }
-        public Vector3 add(double x,double y,double z)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Vector3 add(double x,double y,double z)
         {
             return new Vector3(x + this.x, y + this.y, z +this.z);
-        }
-        public Vector3 reduce(Vector3 other)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Vector3 reduce(Vector3 other)
         {
             return new Vector3(x - other.x, y - other.y, z - other.z);
         }
@@ -742,20 +755,19 @@ namespace MathBase
         public double simpleSize()
         {
             return Math.Abs(x)+ Math.Abs(y)+ Math.Abs(z);
-        }
-        public Vector3 cross(Vector3 other)
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Vector3 cross(Vector3 other)
         {
             return new Vector3(y * other.z - z * other.y, z * other.x - x * other.z, x * other.y - y * other.x);
         }
 
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector3 nolrmalized()
         {
-            if (x == 0 && y == 0 && z == 0)
-            {
-                return new Vector3(0, 0, 0);
-            }
-            double l = length();
+           
+            double l = Math.Sqrt(x*x+y*y+z*z);
             return new Vector3(x / l, y / l, z / l);
         }
 
