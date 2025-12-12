@@ -129,7 +129,7 @@ namespace DVLib.LabDataHelper.DVScript
 			}
 
 		}
-		internal static int  max = 8;
+		public  static readonly int  max = 8;
 	
 		TypeDic typeDic = new();
 	    
@@ -509,14 +509,32 @@ namespace DVLib.LabDataHelper.DVScript
 		{
 			resetDepth();
 			pushStack();
-			Helper.clean(ref text);
+			ScriptObject So=null;
+			Exception e = null; 
+			try
+			{
+
+	        Helper.clean(ref text);
 			SList<ScanInfo> info = new();
 			var r = ScanForOperators(ref text, info);
 
-			var go = GetObject(text, info, r);
+			So = GetObject(text, info, r);
+			}
+			catch(Exception e1)
+			{
+				e = e1;
+			}
+
+		
 			popStack(out var v);
 			resetDepth();
-			return go;
+
+			if(e!=null)
+			{
+				throw (e);
+			}
+
+			return So;
 		}
 		public ScriptObject ReadTopLevel(string text)
 		{

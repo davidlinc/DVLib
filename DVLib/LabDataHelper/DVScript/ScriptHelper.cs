@@ -20,10 +20,10 @@ using System.Data;
 using System.Xml.Linq;
 namespace DVLib.LabDataHelper.DVScript
 {
-	internal static class ScriptHelper
+	public static class ScriptHelper
 	{
-		internal static ScriptObject x = ScriptObject.DoubleParam();
-		internal static ScriptF ParamX()
+		public static ScriptObject x = ScriptObject.DoubleParam();
+		public static ScriptF ParamX()
 		{
 			return
 
@@ -32,8 +32,8 @@ namespace DVLib.LabDataHelper.DVScript
 					return x;
 				};
 		}
-		internal static ScriptObject y = ScriptObject.DoubleParam();
-		internal static ScriptF ParamY()
+		public static ScriptObject y = ScriptObject.DoubleParam();
+		public static ScriptF ParamY()
 		{
 			return
 
@@ -42,8 +42,8 @@ namespace DVLib.LabDataHelper.DVScript
 					return y;
 				};
 		}
-		internal static ScriptObject z = ScriptObject.DoubleParam();
-		internal static ScriptF ParamZ()
+		public static ScriptObject z = ScriptObject.DoubleParam();
+		public static ScriptF ParamZ()
 		{
 			return
 
@@ -52,7 +52,7 @@ namespace DVLib.LabDataHelper.DVScript
 					return z;
 				};
 		}
-		internal static ScriptF Const<T>( T t)
+		public static ScriptF Const<T>( T t)
 		{
 			return
 
@@ -61,12 +61,12 @@ namespace DVLib.LabDataHelper.DVScript
 					return new RootElementScript(typeof(T),Expression.Constant(t));
 				};
 		}
-		internal static ExpMaker<E, E> Negate(ExpMaker<E, E> maker)
+		public static ExpMaker<E, E> Negate(ExpMaker<E, E> maker)
 		{
 			return (A, B) => maker(A, Expression.Negate(B));
 		}
 
-		internal static ScriptInfo param(string name, Type type, out ParameterExpression e,string tag= "tempParam",bool check=true)
+		public static ScriptInfo param(string name, Type type, out ParameterExpression e,string tag= "tempParam",bool check=true)
 		{
 			e = Expression.Parameter(type,name);
 			ParameterExpression ee = e;
@@ -80,9 +80,9 @@ namespace DVLib.LabDataHelper.DVScript
 
 				, tag);
 		}
-		internal static Dictionary<Type, int> typePriority = new Dictionary<Type, int>() { { typeof(byte), 0 }, { typeof(sbyte), 1 }, { typeof(short), 2 }, { typeof(ushort), 3 }, { typeof(int), 4 }, { typeof(uint), 5 }, { typeof(long), 6 }, { typeof(ulong), 7 }, { typeof(float), 8 }, { typeof(double), 9 }, { typeof(string), 10 } };
+		public static Dictionary<Type, int> typePriority = new Dictionary<Type, int>() { { typeof(byte), 0 }, { typeof(sbyte), 1 }, { typeof(short), 2 }, { typeof(ushort), 3 }, { typeof(int), 4 }, { typeof(uint), 5 }, { typeof(long), 6 }, { typeof(ulong), 7 }, { typeof(float), 8 }, { typeof(double), 9 }, { typeof(string), 10 } };
 
-		internal static Type getNewType(Type a, Type b)
+		public static Type getNewType(Type a, Type b)
 		{
 			int t = -1, t2 = -1;
 			bool t_=typePriority.TryGetValue(a, out t);
@@ -110,7 +110,7 @@ namespace DVLib.LabDataHelper.DVScript
 			return Expression.Add(a, b,StringConcat);
 		}
 
-		internal static ScriptF IncrementAssign()
+		public static ScriptF IncrementAssign()
 		{
 			
 			return
@@ -132,7 +132,7 @@ namespace DVLib.LabDataHelper.DVScript
 					}
 				};
 		}
-		internal static ScriptF DecrementAssign()
+		public static ScriptF DecrementAssign()
 		{
 
 			return
@@ -156,7 +156,7 @@ namespace DVLib.LabDataHelper.DVScript
 		}
 
 
-		internal static ScriptF NaiveMath(string name,ExpMaker<E, E> expMaker,Func<Type,Type,Type> dfType=null)
+		public static ScriptF NaiveMath(string name,ExpMaker<E, E> expMaker,Func<Type,Type,Type> dfType=null)
 		{
 			if(dfType==null)
 			{
@@ -219,7 +219,7 @@ namespace DVLib.LabDataHelper.DVScript
 
 			return Expression.Convert(e, t);
 		}
-		internal static ScriptF Subtract()
+		public static ScriptF Subtract()
 		{
 			return
 (string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
@@ -274,7 +274,7 @@ else
 		}
 
 	
-		internal static ScriptF Void()
+		public static ScriptF Void()
 		{
 			return
 
@@ -288,7 +288,7 @@ else
 		}
 
 	
-		internal static ScriptF ConvertFunc( Type type, ExpMaker<E> exp = null)
+		public static ScriptF ConvertFunc( Type type, ExpMaker<E> exp = null)
 		{
 			return
 
@@ -306,11 +306,11 @@ else
 				throw new ParamsCountMismatchException();
 			};
 		}
-		internal static ScriptObject Cast(this ScriptObject script, Type type)
+		public static ScriptObject Cast(this ScriptObject script, Type type)
 		{
 			return new ScriptObject<E>(type, e => ScriptHelper.Convert(e, type), script);
 		}
-		internal static ScriptF LR<L, R, O>(Func<L, R, O> func, bool cast = false)
+		public static ScriptF LR<L, R, O>(Func<L, R, O> func, bool cast = false)
 		{
 			return
 
@@ -334,7 +334,7 @@ else
 				};
 		}
 
-		internal static (string name, List<string> params_) getParams(ReadOnlySpan<char> funcname)
+		public static (string name, List<string> params_) getParams(ReadOnlySpan<char> funcname)
 		{
 			List<string> Params = new List<string>();
 			int plpos = -1;
@@ -378,7 +378,7 @@ else
 			}
 			return types;
 		}
-		internal static ScriptF Return()
+		public static ScriptF Return()
 		{
 			return
 
@@ -403,7 +403,7 @@ else
 						throw new ParamsCountMismatchException();
 					};
 		}
-		internal static ScriptF ClasS(Type t)
+		public static ScriptF ClasS(Type t)
 		{
 			return
 
@@ -415,7 +415,7 @@ else
 					};
 		}
 
-		internal static ScriptF New(Type t)
+		public static ScriptF New(Type t)
 		{
 			return
 
@@ -481,7 +481,7 @@ else
 		}
 
 
-		internal static ScriptF Call()
+		public static ScriptF Call()
 		{
 			return
 
@@ -557,7 +557,7 @@ else
 						throw new ParamsCountMismatchException(text+"?");
 					};
 		}
-		internal static ScriptF Block()
+		public static ScriptF Block()
 		{
 			return
 
@@ -621,7 +621,7 @@ else
 
 
 		}
-		internal static ScriptF While()
+		public static ScriptF While()
 		{
 			return
 
@@ -651,7 +651,7 @@ else
 						throw new ParamsCountMismatchException();
 					};
 		}
-		internal static ScriptF For()
+		public static ScriptF For()
 		{
 			return
 
@@ -709,7 +709,7 @@ else
 						throw new ParamsCountMismatchException();
 					};
 		}
-		internal static ScriptF Break()
+		public static ScriptF Break()
 		{
 			return
 
@@ -722,7 +722,7 @@ else
 						throw new ParamsCountMismatchException();
 					};
 		}
-		internal static ScriptF Continue()
+		public static ScriptF Continue()
 		{
 			return
 
@@ -735,7 +735,7 @@ else
 						throw new ParamsCountMismatchException();
 					};
 		}
-		internal static ScriptF If()
+		public static ScriptF If()
 		{
 			return
 
@@ -778,7 +778,7 @@ else
 						throw new ParamsCountMismatchException();
 					};
 		}
-		internal static ScriptF NewArray(Type type)
+		public static ScriptF NewArray(Type type)
 		{
 			
 			return
@@ -803,7 +803,7 @@ else
 						throw new ParamsCountMismatchException();
 					};
 		}
-		internal static ScriptF NewGeneric(Type type,string TokenHead)
+		public static ScriptF NewGeneric(Type type,string TokenHead)
 		{
 
 			return
@@ -864,12 +864,12 @@ else
 						throw new ParamsCountMismatchException();
 					};
 		}
-		internal static ScriptF NewG(Type Ge,params Type[] type)
+		public static ScriptF NewG(Type Ge,params Type[] type)
 		{
 			Type t=Ge.MakeGenericType(type);
 			return New(t);
 		}
-		internal static ScriptF Index()
+		public static ScriptF Index()
 		{
 			return
 
@@ -913,7 +913,7 @@ else
 					};
 		}
 
-		internal static ScriptF Else()
+		public static ScriptF Else()
 		{
 			return
 
@@ -966,7 +966,7 @@ else
 						throw new ParamsCountMismatchException();
 					};
 		}
-		internal static ScriptF Empty()
+		public static ScriptF Empty()
 		{
 			return
 
@@ -977,7 +977,7 @@ else
 						throw new ParamsCountMismatchException();
 					};
 		}
-		internal static ScriptF EQ()
+		public static ScriptF EQ()
 		{
 			return
 
@@ -1106,7 +1106,7 @@ else
 			}
 			return false;
 		}
-		internal static ScriptF Action<I>(Action<I> func, bool cast = false)
+		public static ScriptF Action<I>(Action<I> func, bool cast = false)
 		{
 			return
 
@@ -1135,7 +1135,7 @@ else
 
 				};
 		}
-		internal static ScriptF Func<I1, I2, I3, O>(Func<I1, I2, I3, O> func, bool cast = false)
+		public static ScriptF Func<I1, I2, I3, O>(Func<I1, I2, I3, O> func, bool cast = false)
 		{
 			return
 
@@ -1175,7 +1175,7 @@ else
 		}
 
 
-		internal static ScriptF Func(LambdaExpression delegate_, bool cast = false)
+		public static ScriptF Func(LambdaExpression delegate_, bool cast = false)
 		{
 			return
 
@@ -1209,7 +1209,7 @@ else
 
 				};
 		}
-		internal static ScriptF Func(Delegate delegate_, bool cast = false)
+		public static ScriptF Func(Delegate delegate_, bool cast = false)
 		{
 			return
 
@@ -1249,7 +1249,7 @@ else
 				};
 		}
 
-		internal static ScriptF R<I, O>(Func<I, O> func, bool cast = false)
+		public static ScriptF R<I, O>(Func<I, O> func, bool cast = false)
 		{
 			return
 
@@ -1267,7 +1267,7 @@ else
 					return new ScriptObject<E>(typeof(O), (a) => Expression.Invoke(f,  a), A);
 				};
 		}
-		internal static ScriptF FuncS<I, O>(Function<I, O> func,bool cast=false)
+		public static ScriptF FuncS<I, O>(Function<I, O> func,bool cast=false)
 		{
 			return
 
@@ -1293,7 +1293,7 @@ else
 				};
 		}
 
-		internal static ScriptF RLOR<I, I1, O>(Func<I1, O> func1, Func<I, I1, O> func2, bool cast = false)
+		public static ScriptF RLOR<I, I1, O>(Func<I1, O> func1, Func<I, I1, O> func2, bool cast = false)
 		{
 			return
 
@@ -1332,7 +1332,7 @@ else
 				};
 		}
 
-		internal static ScriptF L<I, O>(Func<I, O> func, bool cast = false)
+		public static ScriptF L<I, O>(Func<I, O> func, bool cast = false)
 		{
 			return
 
@@ -1351,7 +1351,7 @@ else
 				};
 		}
 
-		internal static ScriptF Func<O>(Func<O> func)
+		public static ScriptF Func<O>(Func<O> func)
 		{
 			return
 
@@ -1368,7 +1368,7 @@ else
 		}
 
 
-		internal static ScriptF Func<I, O>(Func<I, O> func, bool cast = false)
+		public static ScriptF Func<I, O>(Func<I, O> func, bool cast = false)
 		{
 			return
 
@@ -1409,7 +1409,7 @@ else
 
 
 
-		internal static ScriptF Func<I1, I2, O>(Func<I1, I2, O> func, bool cast = false)
+		public static ScriptF Func<I1, I2, O>(Func<I1, I2, O> func, bool cast = false)
 		{
 			return
 
