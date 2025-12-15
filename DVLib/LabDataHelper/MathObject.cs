@@ -1195,6 +1195,13 @@ namespace DVLib.LabDataHelper
 			var v2= fn.findString(")");
 			return v1.Count==1&& v2.Count==1&&v1.First()>0&&v2.First()>v1.First();
 		}
+
+		public static bool isFuncName_script(this string fn)
+		{
+			var v1 = fn.findString("(");
+			var v2 = fn.findString(")");
+			return v1.Count == 1 && v2.Count == 1 && v1.First() > 0 && v2.First() > v1.First()&&(fn.EndsWith(")")||fn.EndsWith(")#"));
+		}
 		public static bool isVarName(this string fn)
 		{
 			var v1 = fn.findString("(");

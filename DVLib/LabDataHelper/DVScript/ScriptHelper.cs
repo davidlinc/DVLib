@@ -988,7 +988,8 @@ else
 						var v = ScriptInfo.solveLR(text, ois, infos, manager);
 
 						var n = manager.getName_func(v[0].name);
-						if (n.name.isFuncName())
+						//DVOS.writeLine(n.name);
+						if (n.name.isFuncName_script())
 						{
 
 							manager.pushStack();
@@ -1047,7 +1048,7 @@ else
 
 							}
 						}
-						else if (n.name.isVarName())
+						else 
 						{
 							//n = manager.getName(v[0].name);
 
@@ -1055,6 +1056,7 @@ else
 							var o = manager.GetObject(n.name, v[0].infos, r);
 
 							var o2 = manager.GetObject(v[1].name, v[1].infos, r);
+							//DVOS.writeLine(o);
 							if (o is IAssign)
 							{
 
