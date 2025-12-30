@@ -19,6 +19,7 @@ using static DVLib.LabDataHelper.DVScript.ScriptHelper;
 using System.Runtime.CompilerServices;
 using System.Collections;
 using System.Xml.Linq;
+using System.ComponentModel;
 
 namespace DVLib.LabDataHelper.DVScript
 {	public class ParamsCountMismatchException:Exception
@@ -182,7 +183,12 @@ namespace DVLib.LabDataHelper.DVScript
 
 		internal override ScriptObject GetObject(string text, ScanList infos, ScanResult result)
 		{
-			
+			//DVOS.writeLine("go:" + text);
+			//foreach (var vv in infos)
+			//{
+			//DVOS.writeLine(vv.Mark + ":" + vv.Position);
+			//}
+			//DVOS.writeLine("go/");
 			var v=base.GetObject(text, infos, result);
 			return v;
 		}
@@ -517,8 +523,8 @@ namespace DVLib.LabDataHelper.DVScript
 	        Helper.clean(ref text);
 			SList<ScanInfo> info = new();
 			var r = ScanForOperators(ref text, info);
-
-			So = GetObject(text, info, r);
+			
+				So = GetObject(text, info, r);
 			}
 			catch(Exception e1)
 			{

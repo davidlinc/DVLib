@@ -357,7 +357,7 @@ namespace DVLib.LabDataHelper
 			List<ScanInfo<T,I,M>> pos=new ();
             foreach(var v in infos)
             {
-                DVOS.writeLine(v.Level);
+               // DVOS.writeLine(v.Level);
                 if(v.Token==split&&v.Level==0)
                 {
                     pos.Add(v);
@@ -1107,7 +1107,7 @@ namespace DVLib.LabDataHelper
 
 			if (ois != null)
 			{
-				// DVOS.writeLine(ois.operatorInfo.Token);
+				//DVOS.writeLine(ois.operatorInfo.Token);
 				var v = ois.operatorInfo.factory(text, ois, infos, (M)this,result);
                 onCreated(v, ois.operatorInfo);
 
@@ -1119,7 +1119,8 @@ namespace DVLib.LabDataHelper
                 try
 				{
 					
-                    var v = getBaseType(text);ObjectDepth--;
+                    var v = getBaseType(text);
+                    ObjectDepth--;
 					return v;
                 }
                 catch

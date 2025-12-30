@@ -473,8 +473,9 @@ else
 
 			if (endToken == '(')
 			{
+				var v0 = infos.Slice(0, dotPos);
 				var v=ScriptInfo.solveFunc(text.Substring(endPos),null,infos.Slice(endPos),manager);
-				return (text.Substring(0, dotPos),infos.Slice(0,dotPos), text.Substring(dotPos + 1, endPos-dotPos-1), v);
+				return (text.Substring(0, dotPos),v0, text.Substring(dotPos + 1, endPos-dotPos-1), v);
 			}
 
 			return null;
@@ -488,11 +489,21 @@ else
 
 					(string text, ScanInfo ois, SList<ScanInfo> infos, ScriptManager manager, ScanResult r) =>
 					{
+					
 						var v=slove_call_(text,ois,infos,manager);
+
+			
+
 						if (v.HasValue)
 						{
-
+							//DVOS.writeLine("ins:" + v.Value.instance);
 							var ins = manager.GetObject(v.Value.instance, v.Value.IInfo, r);
+							//DVOS.writeLine(v.Value.IInfo.Count+":");
+							//foreach(var vv in v.Value.IInfo)
+							//{
+							//	DVOS.writeLine(vv.Mark + ":" + vv.Position);
+							//}
+							//DVOS.writeLine("ins/" );
 							Type t = ins.returnType;
 
 							if(ins is ClassScript)
@@ -545,8 +556,20 @@ else
 								scriptObjects[vv.Params.Length] = ins;
 								for (int i = 0; i < vv.Params.Length; i++)
 								{
+									/*
+									DVOS.writeLine(vv.Params[i].name);
+									DVOS.writeLine(vv.Params[i].infos.Count);
+									foreach (var info in vv.Params[i].infos)
+									{
+										DVOS.writeLine(info.Mark);
+										DVOS.writeLine(info.Position);
+									}
+									*/
 									scriptObjects[i] = manager.GetObject(vv.Params[i].name, vv.Params[i].infos, r);
+
+									//DVOS.writeLine("obj"+i+":"+scriptObjects[i]);
 									types[i] = scriptObjects[i].returnType;
+									//DVOS.writeLine(types[i]);
 								}
 								var m = t.GetMethod(vv.name, types);
 						
