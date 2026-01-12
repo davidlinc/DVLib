@@ -1,15 +1,16 @@
-﻿using System;
+﻿using DVOSLib;
+using Images;
+using MathBase;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using DVOSLib;
-using System.Threading.Tasks;
-using Images;
-using MathBase;
 using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
 using vector2 =MathBase.Vector2;
 
 namespace MathBase
@@ -1925,6 +1926,22 @@ Data[i, j] = (colors[i, j]) & 0xff;
 			}
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 Decompose(this Vector3 vec,Vector3 X,Vector3 Y,Vector3 Z)
+		{
+			var lx2 = X.length_2();
+			var ly2 = Y.length_2();
+			var lz2 = Z.length_2();
+
+			if (lx2 == 0 || ly2 == 0 || lz2 == 0)
+			{
+				return new Vector3(double.NaN, double.NaN, double.NaN);
+			}
+
+			// When X/Y/Z are orthogonal, the decomposition coefficients are simple projections.
+			// vec = ax*X + ay*Y + az*Z  =>  ax = dot(vec,X)/dot(X,X), etc.
+			return new Vector3(vec.dot(X) / lx2, vec.dot(Y) / ly2, vec.dot(Z) / lz2);
+		}
 		public static Vector3[] readDotCloud( Stream stream)
 		{
 			byte[] bytes=new byte[8];
