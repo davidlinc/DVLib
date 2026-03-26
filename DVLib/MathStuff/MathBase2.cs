@@ -51,49 +51,64 @@ namespace MathBase
 			this.realPart = raw.realPart;
 			this.imaginaryPart = raw.imaginaryPart;
 		}
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Complex operator +(Complex a, Complex b)
         {
             return new Complex(a.realPart + b.realPart, a.imaginaryPart + b.imaginaryPart);
         }
-        public static Complex operator ++(Complex a)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex operator ++(Complex a)
         {
             return new Complex(a.realPart + 1, a.imaginaryPart);
         }
-        public static Complex operator --(Complex a)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex operator --(Complex a)
         {
             return new Complex(a.realPart - 1, a.imaginaryPart);
         }
-        public static Complex operator -(Complex a, Complex b)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex operator -(Complex a, Complex b)
         {
             return new Complex(a.realPart - b.realPart, a.imaginaryPart - b.imaginaryPart);
         }
-        public Complex add(Complex b)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex add(Complex b)
         {
             return new Complex(realPart + b.realPart, imaginaryPart + b.imaginaryPart);
         }
 
-        public Complex reduce(Complex b)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex reduce(Complex b)
         {
             return new Complex(realPart - b.realPart, imaginaryPart - b.imaginaryPart);
         }
         public static double p = Math.PI / 180;
 
-        public static double cosAngle(double angle)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static double cosAngle(double angle)
 		{
             return Math.Cos(p* angle);
 		}
-        public static double sinAngle(double angle)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static double sinAngle(double angle)
         {
             return Math.Sin(p * angle);
-        }
-        public Complex mul(Complex b)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex mul(Complex b)
         {
             return new Complex(realPart * b.realPart - imaginaryPart * b.imaginaryPart, realPart * b.imaginaryPart + imaginaryPart * b.realPart)
        ;
         }
 
 		static Vector256<double>  mask = Vector256.Create(0.0, -0.0, 0.0, -0.0);
-        public unsafe Complex mul2(Complex b)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public unsafe Complex mul2(Complex b)
         {
 			var M1 = Vector256.Create(realPart,imaginaryPart,b.realPart,b.imaginaryPart);
 			var M2 = Avx2.Permute4x64(M1, 0b11101110);
@@ -177,21 +192,25 @@ namespace MathBase
             return re;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Complex operator *(Complex a, Complex b)
         {
           return new Complex(a.realPart * b.realPart - a.imaginaryPart * b.imaginaryPart, a.realPart * b.imaginaryPart + a.imaginaryPart * b.realPart);
-        }
-        public Complex scale(double f)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex scale(double f)
         {
             return new Complex(realPart * f, imaginaryPart * f);
-        }
-        public static implicit operator Complex(double s)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static implicit operator Complex(double s)
         {
             return new Complex(s, 0);
-        }
-        public Complex div(Complex b)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex div(Complex b)
         {
-            return this.mul(b.conjugate()).scale(1.0 / b.length());
+            return this.mul(b.conjugate()).scale(1.0 / b.length_2());
         }
 
         public static Complex operator /(Complex a, Complex b)
@@ -209,22 +228,29 @@ namespace MathBase
         {
             return new Complex(Math.Cos(complex.imaginaryPart), Math.Sin(complex.imaginaryPart)).scale(Math.Exp(complex.realPart));
         }
-        public Complex conjugate()
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex conjugate()
         {
             return new Complex(realPart, -imaginaryPart);
         }
 
-        public double length()
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double length()
         {
 
             return Math.Sqrt(realPart * realPart + imaginaryPart * imaginaryPart);
         }
-        public double length_2()
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double length_2()
         {
 
             return realPart * realPart + imaginaryPart * imaginaryPart;
         }
-        public double length_4()
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double length_4()
         {
             double v = realPart * realPart + imaginaryPart * imaginaryPart;
             return v*v ;
@@ -235,19 +261,28 @@ namespace MathBase
             return "("+realPart+","+imaginaryPart+")";
         }
 
-        public double mu()
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double mu()
         {
             return Math.Atan2(imaginaryPart, realPart);
         }
-        public Complex log()
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex log()
         {
             return new Complex(Math.Log(length()), mu());
         }
-        public Complex log(Complex a, Complex b)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex log(Complex a, Complex b)
         {
             return exp(b) / exp(a);
+
         }
-        public Complex Pow(double comp)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex Pow(double comp)
 
         {
 
@@ -280,15 +315,20 @@ namespace MathBase
 
 
 
-        public static bool operator ==(Complex complex, Complex complex1)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool operator ==(Complex complex, Complex complex1)
         {
             return complex.realPart == complex1.realPart && complex.imaginaryPart == complex1.imaginaryPart;
         }
-        public static bool operator !=(Complex complex, Complex complex1)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool operator !=(Complex complex, Complex complex1)
         {
             return complex.realPart != complex1.realPart || complex.imaginaryPart != complex1.imaginaryPart;
         }
-        public static Complex operator ^(Complex complex, Complex power)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex operator ^(Complex complex, Complex power)
         {
             if (complex == E)
             {
@@ -298,14 +338,18 @@ namespace MathBase
             return exp(complex.log() * power);
         }
 
-        public static Complex Exp(Complex c)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+
+		public static Complex Exp(Complex c)
         {
             double amplitude = Math.Exp(c.realPart);
             double cr = amplitude * Math.Cos(c.imaginaryPart);
             double ci = amplitude * Math.Sin(c.imaginaryPart);
             return new Complex(cr, ci);//保留四位小数输出
         }
-        public static Complex Exp(double im)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex Exp(double im)
         {
 
             double cr = Math.Cos(im);
@@ -537,7 +581,7 @@ namespace MathBase
         }
 
 
-        public Vector3i nolrmalized()
+        public Vector3i normalized()
         {
             if (x == 0 && y == 0 && z == 0)
             {
