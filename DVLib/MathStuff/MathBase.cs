@@ -1988,7 +1988,7 @@ Data[i, j] = (colors[i, j]) & 0xff;
 		}
 		static public vector2 zoom(this vector2 vector2, vector2 direction, double k)
 		{
-			direction = direction.nolrmalized();
+			direction = direction.normalized();
 			double u = vector2.dot(direction);
 			vector2 vector = vector2 - (u - u * k) * direction;
 			return vector;

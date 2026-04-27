@@ -43,7 +43,7 @@ namespace NewPhysics
             if (DAT[1] < (r + b2.r) * (r + b2.r) && (owner.velocity.reduce(aobject.velocity)).dot(owner.position.reduce(aobject.position)) < 0)
             {
                 CollideResult result = new CollideResult();
-                Vector3 direction = (owner.position.reduce(aobject.position)).nolrmalized();
+                Vector3 direction = (owner.position.reduce(aobject.position)).normalized();
                 double v1 = owner.velocity.dot(direction), v2 = aobject.getVelocity().dot(direction),
                         m1 = owner.mass,
                         m2 = aobject.mass;
@@ -103,7 +103,7 @@ public class Camera : PhysicsObject,ICopyObject<Camera>{
         this.fov = fov*Math.PI/180;
         this.focalLength = focalLength;
         this.position = position;
-        this.direction = direction.nolrmalized();
+        this.direction = direction.normalized();
         dirs = new Vector3[width,height];
             maxLineLength = Math.Sqrt(width * width + height * height) * 5;
         updateDirs();
@@ -130,7 +130,7 @@ public class Camera : PhysicsObject,ICopyObject<Camera>{
             
             
 
-        Vector2 vector2 = new Vector2(direction.x, direction.z).row(90).nolrmalized();
+        Vector2 vector2 = new Vector2(direction.x, direction.z).row(90).normalized();
        Vector3 x_axis_ = new Vector3(vector2.X, 0, vector2.Y);
        Vector3 y_axis_ = x_axis_.cross(direction);
             double sin = Math.Sin(Theta);
@@ -161,12 +161,12 @@ if (forceStopUptateDirs)
 
         public override void  setDirection(Vector3 direction)
 		{
-            this.direction = direction.nolrmalized();
+            this.direction = direction.normalized();
             updateDirs();
         }
     public void setDirection(Vector3 direction,double theta)
     {
-        this.direction = direction.nolrmalized();
+        this.direction = direction.normalized();
             this.Theta = theta;
         updateDirs();
     }
@@ -332,7 +332,7 @@ if (forceStopUptateDirs)
     {
         x = x - width / 2 + 0.5;
         y = y - height / 2 + 0.5;
-        return (position-(x_axis_normal*x+(y_axis_normal*-y)+(cmosCenter))).nolrmalized();
+        return (position-(x_axis_normal*x+(y_axis_normal*-y)+(cmosCenter))).normalized();
     }
 
     public Vector3 getCmosPoint(double x, double y)
@@ -533,7 +533,7 @@ public int getDefaultColor()
         }
         public RayTraceResult rayTrace(Vector3 position, Vector3 direction, double maxdistance,IRayTraceObject[] toIngnore=null)
 {
-    direction = direction.nolrmalized();
+    direction = direction.normalized();
     List<IRayTraceObject> objects = getIRayTrace(position);
             
     foreach (IRayTraceObject Object in objects)
@@ -730,7 +730,7 @@ return world;
 		}
         public virtual void setDirection(Vector3 vector)
 		{
-            direction = vector.nolrmalized();
+            direction = vector.normalized();
 		}
 
         public Vector3 getDirection()

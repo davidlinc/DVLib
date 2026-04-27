@@ -31,8 +31,8 @@ namespace DVOSLib
         public static void drawCross_45(this bitmap bitmap, double size, int color, Vector2 position)
         {
             size /= 2;
-            Vector2 vdx = new Vector2(1, 1).nolrmalized();
-            Vector2 vdy = new Vector2(1, -1).nolrmalized();
+            Vector2 vdx = new Vector2(1, 1).normalized();
+            Vector2 vdy = new Vector2(1, -1).normalized();
             Vector2 vx = position - vdx * size;
             Vector2 vy = position - vdy * size;
             for (int i = -(int)size; i < size; i++)
@@ -1086,7 +1086,7 @@ public void scan( bool forceUpdate,Vector3 lookVec)
         }
 
         Vector3 dir =lookVec;
-        dir = new Vector3(dir.x, 0, dir.z).nolrmalized();
+        dir = new Vector3(dir.x, 0, dir.z).normalized();
         Vector2 di = new Vector2(dir.x, dir.z);
         angle = di.angle() + 90;
         InfiniteMap data = Map;

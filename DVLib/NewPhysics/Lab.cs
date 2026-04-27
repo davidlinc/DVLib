@@ -90,7 +90,7 @@ public readonly Complex z;
 			  {
 				  Vector3 p = new Vector3(x, y, z);
 				  double r = p.distanceTo(this.position);
-				  Vector3 dir = (p - position).nolrmalized();
+				  Vector3 dir = (p - position).normalized();
 				  Vector3 kr = dir * K;
 
 				  return A / r * (e ^ (i * (kr.x * x + kr.y * y + kr.z * z))) * (ComplexVector3D)dir;
@@ -108,7 +108,7 @@ public readonly Complex z;
 		{
 			this.A = a;
 			K = k;
-			direction = k.nolrmalized();
+			direction = k.normalized();
 			U = (double x, double y, double z) => {
 				return this.A *( e ^ (i * (K.x * x + K.y * y + K.z * z))) * direction;
 			};
@@ -116,8 +116,8 @@ public readonly Complex z;
 		public PlaneWave(Vector3 dir,double k_, double A)
 		{
 			this.A = A;
-			direction = dir.nolrmalized();
-			K = dir.nolrmalized() * k_;
+			direction = dir.normalized();
+			K = dir.normalized() * k_;
 
 			
 			U = (double x, double y, double z) => {

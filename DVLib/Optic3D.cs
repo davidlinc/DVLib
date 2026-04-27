@@ -81,7 +81,7 @@ namespace Optic3D
 				Vector3 pos = vector3.Value;
 				
 
-				Vector3 n = (pos - center).nolrmalized();
+				Vector3 n = (pos - center).normalized();
 				double v = n.dot(ray.direction);
 			
 				if (v>0)
@@ -352,7 +352,7 @@ namespace Optic3D
 		}
 		public ComplexMap createPan(double phySizeD, double E, Vector3 direction)
 		{
-			direction = direction.nolrmalized();
+			direction = direction.normalized();
 			double r = phySizeD / 2 / size * count;
 			r *= r;
 
@@ -376,7 +376,7 @@ namespace Optic3D
 		{
 			double cPos = pos.z;
 
-			Ray ray = new Ray(pos, dir.nolrmalized());
+			Ray ray = new Ray(pos, dir.normalized());
 
 			foreach(SphericalSurface s in lens)
 			{

@@ -52,7 +52,7 @@ namespace physics
 				public subRay(Vector2 p,Vector2 d)
 				{
 					position = p;
-					direction = d.nolrmalized();
+					direction = d.normalized();
 					isEnd = false;
 				}
 				public subRay(Vector2 p)
@@ -113,7 +113,7 @@ namespace physics
 
 							Vector2 temp = new Vector2(face.Position.X, (new Line2d(last.position, last.position + last.direction).crosspoint(new Line2d(face.Position, face.Position + new Vector2(0, 1)))).Y);
 
-							double dd = new Vector2((new Vector2(l, 0) - temp).X * face.n0 * face.n1, 0).nolrmalized().X;
+							double dd = new Vector2((new Vector2(l, 0) - temp).X * face.n0 * face.n1, 0).normalized().X;
 							last = new subRay(temp, dd * (new Vector2(l, 0) - temp));
 
 							subRays.Add(last);
@@ -126,7 +126,7 @@ namespace physics
 			}
 			public Ray(string name,Vector2 position,Vector2 direction):base(name,position)
 			{
-				this.direction = direction.nolrmalized();
+				this.direction = direction.normalized();
 				handle = new rayHandle(position + this.direction*5,this);
 				PositionChanged += onPositionChanged;
 			}

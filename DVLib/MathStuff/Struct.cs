@@ -554,12 +554,12 @@ for (int i = 0; i < ll; i++)
 	{
 		Vector2 bc = c - b;
 		Vector2 ba = a - b;
-		Vector2 paintLine = ba.nolrmalized();
+		Vector2 paintLine = ba.normalized();
 		double cos = ba.cos(bc);
 
 
 		double sin = Math.Sqrt(1 - cos * cos);
-		Vector2 dx = bc.nolrmalized() * (1 / sin) * 0.45;
+		Vector2 dx = bc.normalized() * (1 / sin) * 0.45;
 		Vector2 p;
 		Vector2 p0 = b;
 		double a_b = ba.value();
@@ -617,12 +617,12 @@ for (int i = 0; i < ll; i++)
 	{
 
 		Vector2 d = (p2 - p1);
-		Vector2 t = d.row(90).nolrmalized();
+		Vector2 t = d.row(90).normalized();
 		Vector2 ptemp;
 		p1 = p1 - t * (width / 2.0);
 
 		double l = d.value();
-		d = d.nolrmalized();
+		d = d.normalized();
 		l++;
 		if (l > maxValue)
 		{

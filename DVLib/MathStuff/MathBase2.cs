@@ -808,7 +808,7 @@ namespace MathBase
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Vector3 nolrmalized()
+        public Vector3 normalized()
         {
            
             double l = Math.Sqrt(x*x+y*y+z*z);
@@ -956,7 +956,7 @@ namespace MathBase
             return X * X + Y * Y;
         }
 
-        public Vector2i nolrmalized()//返回单位向量
+        public Vector2i normalized()//返回单位向量
         {
             if (length() != 0)
                 return new Vector2i(X / length(), Y / length());
@@ -1160,7 +1160,7 @@ namespace MathBase
             return X * X + Y * Y;
         }
 
-        public Vector2 nolrmalized()//返回单位向量
+        public Vector2 normalized()//返回单位向量
         {
             if (value() != 0)
                 return new Vector2(X / value(), Y / value());
@@ -1529,7 +1529,7 @@ namespace MathBase
             Vector3 pos = position + h * direction;
             pos = vector3 - pos;
             double r = pos.length();
-            return (new Vector2(r, h),pos.nolrmalized());
+            return (new Vector2(r, h),pos.normalized());
         }
     
 
@@ -1544,7 +1544,7 @@ namespace MathBase
         public Plane(Vector3 pos,Vector3 dir)
 		{
             position = pos;
-            direction = dir.nolrmalized();
+            direction = dir.normalized();
 		}
 
         public Vector3? getCrossPoint(Vector3 position, Vector3 direction, ref double distance)
@@ -1614,7 +1614,7 @@ namespace MathBase
         this.p2 = p2;
         this.p3 = p3;
         position = p1.add(p2).add(p3).scale(ONETHREE);
-        direction = p1.reduce(p2).cross(p2.reduce(p3)).nolrmalized();
+        direction = p1.reduce(p2).cross(p2.reduce(p3)).normalized();
 
     }
         public Plane GetPlane()
@@ -1635,7 +1635,7 @@ namespace MathBase
             this.p2 = p2;
             this.p3 = p3;
             position = p1.add(p2).add(p3).scale(ONETHREE);
-            direction = p1.reduce(p2).cross(p2.reduce(p3)).nolrmalized();
+            direction = p1.reduce(p2).cross(p2.reduce(p3)).normalized();
        
         }
         public Vector3 getP1()

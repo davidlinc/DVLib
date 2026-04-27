@@ -197,7 +197,7 @@ namespace Physics
 					flag = flag || (p1 - pos).dot(cp - pos) * (pos - p1).dot(cp - p1) > 0;
 				}
 
-				vector2 direction = (pos1 - pos2).row(90).nolrmalized();
+				vector2 direction = (pos1 - pos2).row(90).normalized();
 				bool flag2 = (pos - pos1).dot(pos2 - pos1) * (pos - pos2).dot(pos1 - pos2) > 0;
 				if (flag && flag2)
 				{
@@ -482,7 +482,7 @@ namespace Physics
 
 				if (c >= 0 && o2.c >= 0)
 				{
-					vector2 direction = (d - o2.d).nolrmalized(); double v1 = v.dot(direction), v2 = o2.getvelocity2().dot(direction), m1 = m, m2 = o2.m;
+					vector2 direction = (d - o2.d).normalized(); double v1 = v.dot(direction), v2 = o2.getvelocity2().dot(direction), m1 = m, m2 = o2.m;
 					double v21 = (2 * m1 * v1 + m2 * v2 - m1 * v2) / (m1 + m2), v11 = (2 * m2 * v2 + m1 * v1 - m2 * v1) / (m1 + m2);
 					if (m == double.PositiveInfinity)
 					{
@@ -538,7 +538,7 @@ namespace Physics
 				}
 
 				if (o2.m != double.PositiveInfinity && m != double.PositiveInfinity)
-					addforce((o2.d - d).nolrmalized() * (g * m * o2.m / r / r));
+					addforce((o2.d - d).normalized() * (g * m * o2.m / r / r));
 
 
 
@@ -556,7 +556,7 @@ namespace Physics
 				}
 
 				if (o2.m != double.PositiveInfinity && m != double.PositiveInfinity)
-					addforce((-o2.d + d).nolrmalized() * (k * Q * o2.Q / r / r));
+					addforce((-o2.d + d).normalized() * (k * Q * o2.Q / r / r));
 
 
 
@@ -572,7 +572,7 @@ namespace Physics
 
 					if (o2.m != double.PositiveInfinity && m != double.PositiveInfinity)
 					{
-						vector2 af = -(o2.d - d).nolrmalized() * (50 * Math.Min(m, o2.m) * r * r);
+						vector2 af = -(o2.d - d).normalized() * (50 * Math.Min(m, o2.m) * r * r);
 						addforce(af);
 						o2.addforce(-af);
 					}
@@ -683,7 +683,7 @@ namespace Physics
 					if (v.value() >= C)
 
 					{
-						v = v.nolrmalized() * (father.getc());
+						v = v.normalized() * (father.getc());
 					}
 				}
 
@@ -704,13 +704,13 @@ namespace Physics
 			}
 			vector2 field_type_1(mp_object2 o)//大小恒定方向指向场源
 			{
-				return -(o.getdisplacement() - getdisplacement()).nolrmalized() * getstrength();
+				return -(o.getdisplacement() - getdisplacement()).normalized() * getstrength();
 			}
 			vector2 field_type_2(mp_object2 o)//加速度大小恒定方向指向场源
 			{
 				if (getstrength() * o.getmass() != double.PositiveInfinity)
 				{
-					return -(o.getdisplacement() - getdisplacement()).nolrmalized() * getstrength() * o.getmass();
+					return -(o.getdisplacement() - getdisplacement()).normalized() * getstrength() * o.getmass();
 				}
 				return 0;
 			}
@@ -721,7 +721,7 @@ namespace Physics
 					n = o.getstrength() * getstrength() / r / r;
 				else
 					n = 0;
-				return (o.getdisplacement() - getdisplacement()).nolrmalized() * n;
+				return (o.getdisplacement() - getdisplacement()).normalized() * n;
 
 
 			}
