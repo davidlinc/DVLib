@@ -15,83 +15,60 @@ using DVOSLib;
 using MathBase.Old;
 using Physics.Physics2;
 using vector2 = MathBase.Vector2;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 using System.Runtime.InteropServices;
+using System.Drawing;
+using System.Runtime.CompilerServices;
 namespace Images
 {
-	public struct Color0
+	public struct Color32ARGB
 	{
-	public readonly	int R;
-	public readonly int G;
-	public readonly	int B;
-	public readonly int A;
-	public readonly int Code;
-		public Color0(int a ,int r, int g, int b)
+		
+	public byte b;
+	public byte g;
+	public byte r;
+	public byte a;
+
+    public int A { get { return a; } }
+	public int R { get { return r; } }
+	public int G { get { return g; } }
+	public int B { get { return b; } }
+
+	
+	
+		public Color32ARGB(int a ,int r, int g, int b)
 		{
-			this.R = r;
-			this.G = g;
-			this.B = b;
-			this.A = a;
-			Code = ((A & 0xff) << 24) | ((r & 0xff) << 16) | ((g & 0xff) << 8) | ((b & 0xff));
+			this.r = (byte)r;
+			this.g = (byte)g;
+			this.b = (byte)b;
+			this.a = (byte)a;
 
 		}
-		public Color0(int r,int g,int b)
+		public Color32ARGB(int r,int g,int b)
 		{
-			this.R = r;
-			this.G = g;
-			this.B = b;
-			this.A = 255;
-			Code = ((A & 0xff) << 24) | ((r & 0xff) << 16) | ((g & 0xff) << 8) | ((b & 0xff));
+			this.r = (byte)r;
+			this.g = (byte)g;
+			this.b = (byte)b;
+			this.a = 255;
 
 		}
 		public Vector3 toVec()
 		{
-			return new Vector3(R, G, B);
+			return new Vector3(r, g, b);
 		}
 
-		public static Color0 FromArgb(int v1, int v2, int v3, int v4)
+		public static Color32ARGB FromArgb(int v1, int v2, int v3, int v4)
 		{
-			return new Color0(v1,v2,v3,v4);
+			return new Color32ARGB(v1,v2,v3,v4);
 		}	
-		public static implicit operator Int32(Color0 color )
-	{
-		return color.Code;
-	}
+
+		public unsafe static implicit operator int(Color32ARGB color )
+	    {
+		    return *((int*)&color);
+	    }
 	}
 	public delegate int win(int x);
-	public class Converter
-	{
-		bitmap Bitmap;
-		public Converter(bitmap bitmap)
-		{
-			Bitmap = bitmap;
-		}
-		public void toBitmap(PixelAccessor<Argb32> a)
-		{
 
-			for (int i = 0; i < a.Height; i++)
-			{
-				var s = MemoryMarshal.Cast<Argb32, int>(a.GetRowSpan(i));
-				var b = Bitmap.getRowSpan(i);
-				s.CopyTo(b);
-			}
-		}
-		public void toImage(PixelAccessor<Argb32> a)
-		{
-
-			for (int i = 0; i < a.Height; i++)
-			{
-				var s = MemoryMarshal.Cast<Argb32, int>(a.GetRowSpan(i));
-			
-				var b = Bitmap.getRowSpan(i);
-				b.CopyTo(s);
-			}
-		}
-
-	}
-
-	public static class ImageHelper
+	public static class DVImageHelper
 	{
 
 		public static byte[] readFile(string fileName)
@@ -239,17 +216,24 @@ namespace Images
 			return (byte)((value << 7 | ((value << 5) & g) | ((value << 3) & f) | ((value << 1) & e) |
 				((value >> 1) & d) | ((value >> 3) & c) | ((value >> 5) & b) | ((value >> 7) & a)) & 255);
 		}
-
-		public static bitmap fromImage(this Image<Argb32> image)
+		/*
+		public static bitmap fromImage(this Image<Bgra32> image)
 		{
 			bitmap bitmap=new bitmap(image.Width, image.Height);
-			Converter converter = new Converter(bitmap);
+			BitmapConverter converter = new BitmapConverter(bitmap);
 			image.ProcessPixelRows(converter.toImage);
 			return bitmap;
 		}
+		public static Image<Bgra32>  fromBitmap(this bitmap bm )
+		{
+			Image<Bgra32> image=new Image<Bgra32>(bm.Width, bm.Height);
+			BitmapConverter converter = new BitmapConverter(bm);
+			image.ProcessPixelRows(converter.toImage);
+			return image;
+		}
+		*/
 
 
-	
 		static double min = 0.000001;
 
 		public static Vector2 getMassCenterWidth(this bitmap bitmap,int y, Channel channel = Channel.All, double rate = 0.98)
@@ -375,9 +359,9 @@ namespace Images
 			}
 			total = bitmap.Width * bitmap.Height;
 		}
-		public functionmap output(int w, int h,int min ,int max)
+		public Plot2D output(int w, int h,int min ,int max)
 		{
-			functionmap functionmap = new functionmap(w, h);
+			Plot2D functionmap = new Plot2D(w, h);
 			for (int i = min; i < max; i++)
 			{
 				functionmap.add(i, vs1[i]);
@@ -385,9 +369,9 @@ namespace Images
 			return functionmap;
 
 		}
-		public functionmap output(int w,int h)
+		public Plot2D output(int w,int h)
 		{
-			functionmap functionmap = new functionmap(w, h);
+			Plot2D functionmap = new Plot2D(w, h);
 			for(int i=0;i<max;i++)
 			{
 				functionmap.add(i, vs1[i]);
@@ -726,9 +710,9 @@ namespace Images
 				vector2 v = new vector2(Convert.ToDouble(reader.ReadLine()), Convert.ToDouble(reader.ReadLine()));
 				ob.setvelocity2(v);
 				world.addobject(ob);
-				int oc =new Color0(Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()));
+				int oc =new Color32ARGB(Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()));
 				world.obj_c[i] = oc;
-				Color0 tc =new  Color0(Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()));
+				Color32ARGB tc =new  Color32ARGB(Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()));
 				world.obj_tc[i] = tc;
 
 
@@ -748,9 +732,9 @@ namespace Images
 				vector2 v = new vector2(Convert.ToDouble(reader.ReadLine()), Convert.ToDouble(reader.ReadLine()));
 				fi.setvelocity2(v);
 				world.addfield(fi);
-				Color0 oc = Color0.FromArgb(Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()));
+				Color32ARGB oc = Color32ARGB.FromArgb(Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()));
 				world.fie_c[i] = oc;
-				Color0 tc = Color0.FromArgb(Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()));
+				Color32ARGB tc = Color32ARGB.FromArgb(Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()), Convert.ToInt32(reader.ReadLine()));
 				world.fie_tc[i] = tc;
 				int index = Convert.ToInt32(reader.ReadLine());
 				if (index != -1)
@@ -2111,7 +2095,7 @@ new double[] { 1, 1}
 			FileStream s = new FileStream(path, FileMode.Create);
 			if(Bitcount==24)
 			{
-writeToStream(s);
+              writeToStream(s);
 			}
 			
 			s.Flush();
@@ -2165,7 +2149,7 @@ for (int j = (int)height - 1; j >= 0; j--)
 				for (int i = 0; i < width; i++)
 				{
 					stream.Read(temp, 0, 3);
-					temp[3] = 0;
+					temp[3] = 255;
 					C[i, j] = BitConverter.ToInt32(temp, 0);
 				}
 			}
@@ -2238,14 +2222,15 @@ for (int j = (int)height - 1; j >= 0; j--)
 			int[,] C = bitmap.Data;
 
 			if(Bitcount==24)
+			{for (int j=(int)height-1;j>=0;j--)
 			{
-	for(int j=(int)height-1;j>=0;j--)
-			{
-for(int i=0;i<width;i++)
-			{
+				for (int i = 0; i <width ; i++)
+				{
+					
+            
 					byte[] color = BitConverter.GetBytes(C[i, j]);
 					stream.Write(color, 0, 3);
-				}
+			}
 			}
 			}	
 			else if(Bitcount==32)
@@ -2514,13 +2499,13 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 		{
 			return Data;
 		}
-	
+	/*
 		public bitmap(string path)
 		{
 			name = path;
 			try
 			{
-                Image<Argb32> image=Image.Load<Argb32>(path);
+                Image<Bgra32> image=Image.Load<Bgra32>(path);
 				if (image != null)
 				{
 					Width= image.Width;
@@ -2528,7 +2513,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 					HWidth = image.Width/2;
 					HHeight = image.Height/2;
 					Data=new int[Width,Height];
-					image.ProcessPixelRows(new Converter(this).toBitmap);
+					image.ProcessPixelRows(new BitmapConverter(this).toBitmap);
 					image.Dispose();
 				}
 			}
@@ -2538,6 +2523,9 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			}
 
 		}
+	*/
+
+	
 		public bitmap getRect(Rectanglei r)
 		{
 			bitmap bitmap = new bitmap(r.width, r.height);
@@ -2546,12 +2534,16 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			});
 			return bitmap;
 		}
-		public static implicit operator Image<Argb32>(bitmap bitmap)
+   
+
+
+		/*
+		public static implicit operator Image<Bgra32>(bitmap bitmap)
 		{
-			Image<Argb32> image = new Image<Argb32>(bitmap.Width, bitmap.Height);
-			image.ProcessPixelRows(new Converter(bitmap).toImage);
+			Image<Bgra32> image = new Image<Bgra32>(bitmap.Width, bitmap.Height);
+			image.ProcessPixelRows(new BitmapConverter(bitmap).toImage);
 			return image;
-		}
+		}*/
 		public bitmap[] getRandomAreas(int count,int width,int height,int minWidth=1,int minHeight=1,int maxWidth=-1,int maxHeight=-1)
 		{
 			if(maxWidth<1)
@@ -2614,7 +2606,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 		{
 		
 				ComplexMap map = new ComplexMap(this, channel);
-				map = map.FFT().fftShift().move(x, y).ifftShift();
+				map = map.FFT().fftShift().phaseMove(x, y).ifftShift();
 				return map;
 			
 		}
@@ -2628,10 +2620,10 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 				ComplexMap r = new ComplexMap(this, Channel.Red);
 				ComplexMap g = new ComplexMap(this, Channel.Green);
 				ComplexMap b = new ComplexMap(this, Channel.Blue);
-				a=a.FFT().fftShift().move(x,y).ifftShift().iFFT();
-				r = r.FFT().fftShift().move(x, y).ifftShift().iFFT();
-				g = g.FFT().fftShift().move(x, y).ifftShift().iFFT();
-				b = b.FFT().fftShift().move(x, y).ifftShift().iFFT();
+				a=a.FFT().fftShift().phaseMove(x,y).ifftShift().iFFT();
+				r = r.FFT().fftShift().phaseMove(x, y).ifftShift().iFFT();
+				g = g.FFT().fftShift().phaseMove(x, y).ifftShift().iFFT();
+				b = b.FFT().fftShift().phaseMove(x, y).ifftShift().iFFT();
 
 				Complex[,] ad=a.Data, rd=r.Data, gd=g.Data, bd=b.Data;
 				bitmap.Foreach((i, j, d) =>
@@ -2646,7 +2638,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			else
 			{
 				ComplexMap map = new ComplexMap(this, channel);
-				map = map.FFT().fftShift().move(x, y).ifftShift().iFFT();
+				map = map.FFT().fftShift().phaseMove(x, y).ifftShift().iFFT();
 				return map.toBitmap();
 			}
 
@@ -2838,7 +2830,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 
 				{
 
-					bitmap.SetPixel(x, y, ((Color0)(new Vector3(255, 255, 255) - GetPixel(x, y).toVec())).Code);
+					bitmap.SetPixel(x, y, ((Color32ARGB)(new Vector3(255, 255, 255) - GetPixel(x, y).toVec())));
 				}
 
 			}
@@ -2963,6 +2955,45 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			return bp;
 		}
 
+		public unsafe void ToBitmap(byte* bitmap,int stride)
+		{
+				for (int i = 0; i < Height; i++)
+				{
+					for (int j = 0; j < Width; j++)
+					{
+						int c = Data[j, i];
+						bitmap[0] = (byte)(c & 0xff);
+						bitmap[1] = (byte)((c >> 8) & 0xff);
+						bitmap[2] = (byte)((c >> 16) & 0xff);
+						bitmap[3] = (byte)((c >> 24) & 0xff);
+						bitmap += 4;
+					}
+					bitmap += stride - Width * 4;
+				}
+		}
+
+		public System.Drawing.Rectangle GetRectangle()
+		{
+			return new System.Drawing.Rectangle(0, 0, Width, Height);
+		}
+		public unsafe static bitmap FromBitmap(byte* raw,int width,int height,int stride)
+		{
+
+			bitmap bitmap = new bitmap(width,height);
+			unsafe
+			{
+				for (int i = 0; i < height; i++)
+				{
+					for (int j = 0; j < width; j++)
+					{
+						bitmap.SetPixel(j, i, raw[3], raw[2], raw[1], raw[0]);
+						raw += 4;
+					}
+					raw += stride - width * 4;
+				}
+			}
+			return bitmap;
+		}
 		public int getGoodR(double x,double y)
 		{
 			Vector2i p1=new Vector2i((int)x,(int)y);
@@ -3035,10 +3066,10 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 
 			this.Data[x, y] = c;
 		}
-		public void SetPixel(int x, int y, Color0 c)
+		public void SetPixel(int x, int y, Color32ARGB c)
 		{
 
-			this.Data[x, y] = c.Code;
+			this.Data[x, y] = c;
 		}
 		public void SetPixel_m(int x, int y, int c, double p)
 		{
@@ -3231,14 +3262,12 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			return (Data[x, y])
 				& 0xff;
 		}
-		public  Color0 GetPixel(int x, int y)
+		public unsafe ref Color32ARGB GetPixel(int x, int y)
 		{
-			int c = Data[x, y];
-
-			if (x < Width && y < Height)
-				return new Color0((c >> 24) & 0xff,(c>>16)&0xff,( c>>8)&0xff, c&0xff);
-			else
-				return new Color0(255,255,255);
+			fixed (int* ip = &Data[x,y])
+			{
+				return ref *((Color32ARGB*)ip);
+			}
 		}
 
 
@@ -3264,7 +3293,7 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 				}
 			}
 		}
-		public void paint(Color0 c)
+		public void paint(Color32ARGB c)
 		{
 			for (int xi = 0; xi < this.Width; xi++)
 			{
@@ -3516,15 +3545,15 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 				for (int y = 0; y < bitmap.Height; y++)
 				{
 					{
-						int b = bitmap.GetPixel(x, y).B;
-						bitmap.SetPixel(x, y,new  Color0 (0, 0, b));
+						int b = bitmap.GetPixel(x, y).b;
+						bitmap.SetPixel(x, y,new  Color32ARGB (0, 0, b));
 					}
 				}
 		}
-		public static Color0 channal(this Color0 color, Color0 direction)
+		public static Color32ARGB channal(this Color32ARGB color, Color32ARGB direction)
 		{
 
-			Vector3 d0 = new Vector3(direction.R, direction.G, direction.B);
+			Vector3 d0 = new Vector3(direction.r, direction.g, direction.b);
 			Vector3 dmax;
 			if (d0.x > d0.y && d0.x > d0.z)
 			{
@@ -3543,13 +3572,13 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			return result;
 		}
 
-		public static void bc(this bitmap bitmap, Color0 color0
+		public static void bc(this bitmap bitmap, Color32ARGB color0
 			)
 		{
 			for (int x = 0; x < bitmap.Width; x++)
 				for (int y = 0; y < bitmap.Height; y++)
 				{
-					bitmap.SetPixel(x, y, bitmap.GetPixel(x, y).channal(color0).Code);
+					bitmap.SetPixel(x, y, bitmap.GetPixel(x, y).channal(color0));
 				}
 		}
 		public static vector2 Pointtoveector(Vector2i p)
@@ -4284,9 +4313,9 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 					if (ix + x >= 0 && iy + y >= 0 && ix + x < pb.Width && iy + y < pb.Height && pa.GetColor(ix, iy) != key)
 					{
 
-						int r = (pa.GetPixel(ix, iy).R + pb.GetPixel(ix + x, iy + y).R) / 2;
-						int g = (pa.GetPixel(ix, iy).G + pb.GetPixel(ix + x, iy + y).G) / 2;
-						int b = (pa.GetPixel(ix, iy).B + pb.GetPixel(ix + x, iy + y).B) / 2;
+						int r = (pa.GetPixel(ix, iy).r + pb.GetPixel(ix + x, iy + y).r) / 2;
+						int g = (pa.GetPixel(ix, iy).g + pb.GetPixel(ix + x, iy + y).g) / 2;
+						int b = (pa.GetPixel(ix, iy).b + pb.GetPixel(ix + x, iy + y).b) / 2;
 						drawpoint(pb, x + ix, y + iy,(r,g,b).RGB2Int());
 					}
 				}
@@ -4302,9 +4331,9 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 					if (ix + x >= 0 && iy + y >= 0 && ix + x < pb.Width && iy + y < pb.Height)
 					{
 
-						int r = (pa.GetPixel(ix, iy).R + pb.GetPixel(ix + x, iy + y).R) / 2;
-						int g = (pa.GetPixel(ix, iy).G + pb.GetPixel(ix + x, iy + y).G) / 2;
-						int b = (pa.GetPixel(ix, iy).B + pb.GetPixel(ix + x, iy + y).B) / 2;
+						int r = (pa.GetPixel(ix, iy).r + pb.GetPixel(ix + x, iy + y).r) / 2;
+						int g = (pa.GetPixel(ix, iy).g + pb.GetPixel(ix + x, iy + y).g) / 2;
+						int b = (pa.GetPixel(ix, iy).b + pb.GetPixel(ix + x, iy + y).b) / 2;
 						drawpoint(pb, x + ix, y + iy, (r, g, b).RGB2Int());
 					}
 				}
@@ -4685,7 +4714,8 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 			return (s % 5).ToString();
 		}
 
-		public static Color createcolor(string code, int n)
+		/*
+		public static SixLabors.ImageSharp.Color createcolor(string code, int n)
 		{
 			int a, r, g, b;
 			if (getint(code, 0, 10, n) > 8)
@@ -4702,9 +4732,9 @@ FileStream fileStream = new FileStream(stream, FileMode.Open);
 				b = r;
 				a = getint(code, 0, 254, 4 * n - 3);
 			}
-			return Color.FromRgba((byte)r, (byte)g, (byte)b, (byte)a);
+			return SixLabors.ImageSharp.Color.FromRgba((byte)r, (byte)g, (byte)b, (byte)a);
 		}
-
+		*/
 		public static int[] createint(string code, int min, int max, int number)
 		{
 			int lenth;

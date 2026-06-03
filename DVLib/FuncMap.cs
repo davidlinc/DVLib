@@ -13,18 +13,19 @@ using System.Drawing.Imaging;
 using Physics.Physics2;
 using Images;
 using vector2 = MathBase.Vector2;
+using DVOSLib;
 
 namespace Images
 {
-	public class functionmap
+	public class Plot2D
 	{
 		public static preRenderFont fontRenderer;
-	    static functionmap()
+	    static Plot2D()
 		{
 			fontRenderer = FontManager.renderFont;
 		}
 		public bool no_zore = false;
-		vector2[] points = new vector2[0];
+		List<Vector2> points = new List<Vector2>();
 		vector2 Rmaxp;
 		vector2 Rminp;
 		bool usingrange = false;
@@ -44,7 +45,7 @@ namespace Images
 		public void clean()
 
 		{
-			points = new vector2[0];
+			points.Clear();
 		}
 		public void setrange(vector2 r0, vector2 r1)
 		{
@@ -76,7 +77,7 @@ namespace Images
 			xyc = c2;
 			linec = c3;
 		}
-		public functionmap(int w, int h)
+		public Plot2D(int w, int h)
 		{
 			width = w;
 			height = h;
@@ -90,20 +91,13 @@ namespace Images
 			vector2 result = new vector2((v.X - minP.X) * xzoom + dis, height - ((v.Y - minP.Y) * yzoom + dis));
 			return result;
 		}
-		public void add(Double x, double y)
+		public void add(double x, double y)
 		{
-			vector2 v = new vector2(x, y);
-			vector2[] temp = new vector2[points.Length + 1];
-			points.CopyTo(temp, 0);
-			temp[points.Length] = v;
-			points = temp;
+			points.Add(new vector2(x, y));
 		}
 		public void add(vector2 v)
 		{
-			vector2[] temp = new vector2[points.Length + 1];
-			points.CopyTo(temp, 0);
-			temp[points.Length] = v;
-			points = temp;
+			points.Add(v);
 		}
 		void drawxy(bitmap map)
 		{
@@ -124,7 +118,7 @@ namespace Images
 		}
 		void drawpoints(bitmap map)
 		{
-			for (int i = 0; i < points.Length - 1; i++)
+			for (int i = 0; i < points.Count - 1; i++)
 			{
 				if (!(points[i].X == 0 && points[i].Y == 0) || !no_zore)
 				{
@@ -141,7 +135,7 @@ namespace Images
 			}
 			double maxX = points[0].X;
 			double maxY = points[0].Y;
-			for (int i = 0; i < points.Length; i++)
+			for (int i = 0; i < points.Count; i++)
 			{
 				if (points[i].X > maxX)
 				{
@@ -162,7 +156,7 @@ namespace Images
 			}
 			double minX = points[0].X;
 			double minY = points[0].Y;
-			for (int i = 0; i < points.Length; i++)
+			for (int i = 0; i < points.Count; i++)
 			{
 				if (points[i].X < minX)
 				{
@@ -175,11 +169,11 @@ namespace Images
 			}
 			return new vector2(minX, minY);
 		}
-		static public functionmap fromfile(string path, int w, int h)
+		static public Plot2D fromfile(string path, int w, int h)
 		{
 			FileStream file = new FileStream(path, FileMode.Open);
 			StreamReader reader = new StreamReader(file);
-			functionmap functionmap = new functionmap(w, h);
+			Plot2D functionmap = new Plot2D(w, h);
 			bool flag = true;
 			string x, y;
 			string temp;
@@ -230,6 +224,10 @@ namespace Images
 		public bitmap get()
 		{
 			bitmap map = new bitmap(width, height);
+			if(points.Count<2)
+			{
+				return map;
+			}
 			map.paint(Colors.White);
 
 			drawxy(map);

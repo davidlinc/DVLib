@@ -7,8 +7,14 @@ using DVOSLib;
 using NewPhysics;
 using Images;
 using System.Xml;
+using System.Runtime.Intrinsics;
 using System.Reflection;
 using System.IO;
+using System.Numerics;
+using System.Runtime.Intrinsics.X86;
+using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 namespace MathBase
 {
@@ -16,8 +22,8 @@ namespace MathBase
     {
 
 
-        public readonly double realPart;
-        public readonly double imaginaryPart;
+        public double realPart;
+        public double imaginaryPart;
         public static FieldInfo r;
         public static FieldInfo i;
         public static double PI = Math.PI;
@@ -39,62 +45,172 @@ namespace MathBase
             this.realPart = r;
             this.imaginaryPart = i;
         }
-  
-        public static Complex operator +(Complex a, Complex b)
+		public Complex
+		   (Complex raw)
+		{
+			this.realPart = raw.realPart;
+			this.imaginaryPart = raw.imaginaryPart;
+		}
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex operator +(Complex a, Complex b)
         {
             return new Complex(a.realPart + b.realPart, a.imaginaryPart + b.imaginaryPart);
         }
-        public static Complex operator ++(Complex a)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex operator ++(Complex a)
         {
             return new Complex(a.realPart + 1, a.imaginaryPart);
         }
-        public static Complex operator --(Complex a)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex operator --(Complex a)
         {
             return new Complex(a.realPart - 1, a.imaginaryPart);
         }
-        public static Complex operator -(Complex a, Complex b)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex operator -(Complex a, Complex b)
         {
             return new Complex(a.realPart - b.realPart, a.imaginaryPart - b.imaginaryPart);
         }
-        public Complex add(Complex b)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex add(Complex b)
         {
             return new Complex(realPart + b.realPart, imaginaryPart + b.imaginaryPart);
         }
 
-        public Complex reduce(Complex b)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex reduce(Complex b)
         {
             return new Complex(realPart - b.realPart, imaginaryPart - b.imaginaryPart);
         }
         public static double p = Math.PI / 180;
 
-        public static double cosAngle(double angle)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static double cosAngle(double angle)
 		{
             return Math.Cos(p* angle);
 		}
-        public static double sinAngle(double angle)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static double sinAngle(double angle)
         {
             return Math.Sin(p * angle);
-        }
-        public Complex mul(Complex b)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex mul(Complex b)
         {
             return new Complex(realPart * b.realPart - imaginaryPart * b.imaginaryPart, realPart * b.imaginaryPart + imaginaryPart * b.realPart)
        ;
         }
-        public static Complex operator *(Complex a, Complex b)
+
+		static Vector256<double>  mask = Vector256.Create(0.0, -0.0, 0.0, -0.0);
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public unsafe Complex mul2(Complex b)
         {
-            return new Complex(a.realPart * b.realPart - a.imaginaryPart * b.imaginaryPart, a.realPart * b.imaginaryPart + a.imaginaryPart * b.realPart);
+			var M1 = Vector256.Create(realPart,imaginaryPart,b.realPart,b.imaginaryPart);
+			var M2 = Avx2.Permute4x64(M1, 0b11101110);
+		    M1 = Avx2.Permute4x64(M1, 0b01000100);
+			var M3 = Avx.Multiply(Avx.Xor(M1, mask), M2);
+			var M4 = Avx.Multiply(M1, Avx2.Permute4x64(M2, 0b10110001));
+            M1 = Avx.HorizontalAdd(M3, M4);
+			return Unsafe.Read<Complex>(&M1);
+		}
+
+        public static double dot(Span<double> a, Span<double> b)
+        {
+            double r = 0;
+            for (var i = 0; i < a.Length; i++) { 
+            
+            r+= a[i] * b[i];
+            }
+            return r;
         }
-        public Complex scale(double f)
+
+		public static double dot2(Span<double> a, Span<double> b )
+        {
+            var M1 = Vector256<double>.Zero;
+
+            int left = a.Length % 4;
+            double result = 0;
+            var sa = MemoryMarshal.Cast<double, Vector256<double>>(a);
+			var sb = MemoryMarshal.Cast<double, Vector256<double>>(b);
+            
+			for (int i=0; i<sa.Length; i++)
+            {
+                M1 =Avx.Add( Avx.Multiply(sa[i], sb[i]),M1);
+            }
+            result = M1.GetElement(0)+M1.GetElement(1)+M1.GetElement(2)+M1.GetElement(3);
+            if(left>0)
+            {
+                for (int i=0,ind=a.Length-1;i<left;i++,ind--)
+                {
+
+                    result += a[ind] * b[ind];
+                }
+            }
+
+            return result;
+        }
+		public unsafe static Complex[] mul2(Complex[] a, Complex[] b)
+        {
+            Complex[] re = new Complex[a.Length];
+			int li = a.Length - 1;
+			
+                var M1 = new Vector256<double>();
+                var M2 = new Vector256<double>();
+
+            ReadOnlySpan<Vector256<double>> a_=MemoryMarshal.Cast<Complex,Vector256<double>>(a);
+			ReadOnlySpan<Vector256<double>> b_ = MemoryMarshal.Cast<Complex, Vector256<double>>(b);
+            Span<Vector256<double>> span = MemoryMarshal.Cast<Complex, Vector256<double>>(re);
+			var mask= Vector256.Create(0.0,-0.0,0.0,-0.0);
+                int t = a.Length>>1;
+                int left = a.Length - (t<<1 );
+				for (int i = 0; i < t; i++)
+					{
+				span[i] = Avx.HorizontalAdd(Avx.Multiply(Avx.Xor(a_[i], mask), b_[i]), Avx.Multiply(a_[i], Avx2.Permute4x64(b_[i], 0b10110001)));
+				}
+                if(left>0)
+                {
+                    re[li] = a[li] * b[li];
+                }
+            return re;
+        }
+        public static Complex test;
+		public static Vector256<double> test2;
+		public unsafe static Complex[] mul(Complex[] a, Complex[] b)
+		{
+			Complex[] re = new Complex[a.Length];
+
+            for (int i = 0; i < a.Length; i++)
+            {
+                re[i]= a[i]*b[i];
+            }
+
+            return re;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex operator *(Complex a, Complex b)
+        {
+          return new Complex(a.realPart * b.realPart - a.imaginaryPart * b.imaginaryPart, a.realPart * b.imaginaryPart + a.imaginaryPart * b.realPart);
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex scale(double f)
         {
             return new Complex(realPart * f, imaginaryPart * f);
-        }
-        public static implicit operator Complex(double s)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static implicit operator Complex(double s)
         {
             return new Complex(s, 0);
-        }
-        public Complex div(Complex b)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex div(Complex b)
         {
-            return this.mul(b.conjugate()).scale(1.0 / b.length());
+            return this.mul(b.conjugate()).scale(1.0 / b.length_2());
         }
 
         public static Complex operator /(Complex a, Complex b)
@@ -112,22 +228,29 @@ namespace MathBase
         {
             return new Complex(Math.Cos(complex.imaginaryPart), Math.Sin(complex.imaginaryPart)).scale(Math.Exp(complex.realPart));
         }
-        public Complex conjugate()
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex conjugate()
         {
             return new Complex(realPart, -imaginaryPart);
         }
 
-        public double length()
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double length()
         {
 
             return Math.Sqrt(realPart * realPart + imaginaryPart * imaginaryPart);
         }
-        public double length_2()
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double length_2()
         {
 
             return realPart * realPart + imaginaryPart * imaginaryPart;
         }
-        public double length_4()
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double length_4()
         {
             double v = realPart * realPart + imaginaryPart * imaginaryPart;
             return v*v ;
@@ -138,19 +261,28 @@ namespace MathBase
             return "("+realPart+","+imaginaryPart+")";
         }
 
-        public double mu()
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double mu()
         {
             return Math.Atan2(imaginaryPart, realPart);
         }
-        public Complex log()
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex log()
         {
             return new Complex(Math.Log(length()), mu());
         }
-        public Complex log(Complex a, Complex b)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex log(Complex a, Complex b)
         {
             return exp(b) / exp(a);
+
         }
-        public Complex Pow(double comp)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Complex Pow(double comp)
 
         {
 
@@ -183,15 +315,20 @@ namespace MathBase
 
 
 
-        public static bool operator ==(Complex complex, Complex complex1)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool operator ==(Complex complex, Complex complex1)
         {
             return complex.realPart == complex1.realPart && complex.imaginaryPart == complex1.imaginaryPart;
         }
-        public static bool operator !=(Complex complex, Complex complex1)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool operator !=(Complex complex, Complex complex1)
         {
             return complex.realPart != complex1.realPart || complex.imaginaryPart != complex1.imaginaryPart;
         }
-        public static Complex operator ^(Complex complex, Complex power)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex operator ^(Complex complex, Complex power)
         {
             if (complex == E)
             {
@@ -201,14 +338,18 @@ namespace MathBase
             return exp(complex.log() * power);
         }
 
-        public static Complex Exp(Complex c)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+
+		public static Complex Exp(Complex c)
         {
             double amplitude = Math.Exp(c.realPart);
             double cr = amplitude * Math.Cos(c.imaginaryPart);
             double ci = amplitude * Math.Sin(c.imaginaryPart);
             return new Complex(cr, ci);//保留四位小数输出
         }
-        public static Complex Exp(double im)
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Complex Exp(double im)
         {
 
             double cr = Math.Cos(im);
@@ -380,13 +521,13 @@ namespace MathBase
         {
             return new Vector3i(-a.x, -a.y, -a.z);
         }
-        public static implicit operator Vector3i(Color0 color)
+        public static implicit operator Vector3i(Color32ARGB color)
         {
-            return new Vector3i(color.R, color.G, color.B);
+            return new Vector3i(color.r, color.g, color.b);
         }
-        public static implicit operator Color0(Vector3i color)
+        public static implicit operator Color32ARGB(Vector3i color)
         {
-            return new Color0((int)color.x, (int)color.y, (int)color.z);
+            return new Color32ARGB((int)color.x, (int)color.y, (int)color.z);
         }
         public double length()
         {
@@ -440,7 +581,7 @@ namespace MathBase
         }
 
 
-        public Vector3i nolrmalized()
+        public Vector3i normalized()
         {
             if (x == 0 && y == 0 && z == 0)
             {
@@ -457,7 +598,9 @@ namespace MathBase
     }
     public struct Vector3 : ICopyObject<Vector3>, IxmlObject<Vector3>
     {
-
+  public double x;
+  public double y;
+  public double z;
      
         public  bool isZore{get{return  x == 0 && z == 0 && y != 0;} }
 
@@ -465,9 +608,7 @@ namespace MathBase
         public bool isOnY { get { return x == 0 && z == 0 && y != 0; } }
         public bool isOnX { get { return x != 0 && z == 0 && y == 0; } }
         public bool isOnZ { get { return x == 0 && z != 0 && y == 0; } }
-        public readonly double x;
-        public readonly double y;
-        public readonly double z;
+      
 
         public Vector3(double x, double y, double z)
         {
@@ -484,20 +625,23 @@ namespace MathBase
             z = (color)
         & 0xff;
         }
-
-        public static Vector3 operator +(Vector3 a, Vector3 b)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator +(Vector3 a, Vector3 b)
         {
             return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z);
-        }
-        public static Vector3 operator *(double a, Vector3 b)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator *(double a, Vector3 b)
         {
             return new Vector3(a * b.x, a * b.y, a * b.z);
-        }
-        public static Vector3 operator *(int a, Vector3 b)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator *(int a, Vector3 b)
         {
             return new Vector3(a * b.x, a * b.y, a * b.z);
-        }
-        public static Vector3 operator *(Vector3 b, double a)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator *(Vector3 b, double a)
         {
             return new Vector3(a * b.x, a * b.y, a * b.z);
         }
@@ -559,42 +703,50 @@ namespace MathBase
             double b = (x0 * y1 - x1 * y0) / (x2 * y1 - x1 * y2);
 			return new double[]{ a,b};
 			}
-            
-        }
-        public static Vector3 operator /(Vector3 b, double a)
+
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator /(Vector3 b, double a)
         {
             return new Vector3(b.x / a, b.y / a, b.z / a);
-        }
-        public static Vector3 operator *(Vector3 b, int a)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator *(Vector3 b, int a)
         {
             return new Vector3(a * b.x, a * b.y, a * b.z);
-        }
-        public static Vector3 operator -(Vector3 a, Vector3 b)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator -(Vector3 a, Vector3 b)
         {
             return new Vector3(a.x - b.x, a.y - b.y, a.z - b.z);
-        }
-        public static Vector3 operator -(Vector3 a)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 operator -(Vector3 a)
         {
             return new Vector3(-a.x, -a.y, -a.z);
-        }
-        public static implicit operator Vector3(Color0 color)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static implicit operator Vector3(Color32ARGB color)
         {
-            return new Vector3(color.R, color.G, color.B);
-        }
-        public static implicit operator Vector3((double ,double,double) vec)
+            return new Vector3(color.r, color.g, color.b);
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static implicit operator Vector3((double ,double,double) vec)
 		{
             return new Vector3(vec.Item1, vec.Item2, vec.Item3);
 		}
-        public static implicit operator Color0(Vector3 color)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static implicit operator Color32ARGB(Vector3 color)
         {
-            return new  Color0 ((int)color.x, (int)color.y, (int)color.z);
+            return new  Color32ARGB ((int)color.x, (int)color.y, (int)color.z);
         }
-        public double length()
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double length()
         {
             return Math.Sqrt(x * x + y * y + z * z);
         }
-
-        public double length_2()
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public double length_2()
         {
             return x * x + y * y + z * z;
         }
@@ -603,16 +755,18 @@ namespace MathBase
         {
             return new Vector3(x * d, y * d, z * d);
         }
-
-        public Vector3 add(Vector3 other)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Vector3 add(Vector3 other)
         {
             return new Vector3(x + other.x, y + other.y, z + other.z);
-        }
-        public Vector3 add(double x,double y,double z)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Vector3 add(double x,double y,double z)
         {
             return new Vector3(x + this.x, y + this.y, z +this.z);
-        }
-        public Vector3 reduce(Vector3 other)
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Vector3 reduce(Vector3 other)
         {
             return new Vector3(x - other.x, y - other.y, z - other.z);
         }
@@ -645,20 +799,19 @@ namespace MathBase
         public double simpleSize()
         {
             return Math.Abs(x)+ Math.Abs(y)+ Math.Abs(z);
-        }
-        public Vector3 cross(Vector3 other)
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Vector3 cross(Vector3 other)
         {
             return new Vector3(y * other.z - z * other.y, z * other.x - x * other.z, x * other.y - y * other.x);
         }
 
-
-        public Vector3 nolrmalized()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Vector3 normalized()
         {
-            if (x == 0 && y == 0 && z == 0)
-            {
-                return new Vector3(0, 0, 0);
-            }
-            double l = length();
+           
+            double l = Math.Sqrt(x*x+y*y+z*z);
             return new Vector3(x / l, y / l, z / l);
         }
 
@@ -803,7 +956,7 @@ namespace MathBase
             return X * X + Y * Y;
         }
 
-        public Vector2i nolrmalized()//返回单位向量
+        public Vector2i normalized()//返回单位向量
         {
             if (length() != 0)
                 return new Vector2i(X / length(), Y / length());
@@ -850,12 +1003,14 @@ namespace MathBase
     }
     public struct Vector2:IxmlObject<Vector2>
     {
-        public readonly double X;
-        public readonly double Y;
-        public static Vector2 Xaxis = new Vector2(1, 0);
-        public static Vector2 Yaxis = new Vector2(0, 1);
-      
-        public Vector2i Vector2i { get { return new Vector2i((int)X, (int)Y); } } 
+        public double X;
+        public double Y;
+        public static readonly  Vector2 Xaxis  = new Vector2(1, 0);
+        public static readonly Vector2 Yaxis  = new Vector2(0, 1);
+
+		public static readonly Vector2 One = new Vector2(1,1);
+		public static readonly Vector2 Zero  = new Vector2(0, 0);
+		public Vector2i Vector2i { get { return new Vector2i((int)X, (int)Y); } } 
         public static Vector2 operator +(Vector2 a, Vector2 b)
         {
             return new Vector2(a.X + b.X, a.Y + b.Y);
@@ -872,7 +1027,17 @@ namespace MathBase
         {
             return new Vector2(a * b.X, a * b.Y);
         }
-        public static Vector2 operator *(Vector2 b, double a)
+        /// <summary>
+        /// 标量乘法
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+		public static Vector2 operator *(Vector2 a, Vector2 b)
+		{
+			return new Vector2(a.X * b.X, a.Y * b.Y);
+		}
+		public static Vector2 operator *(Vector2 b, double a)
         {
             return new Vector2(a * b.X, a * b.Y);
         }
@@ -995,7 +1160,7 @@ namespace MathBase
             return X * X + Y * Y;
         }
 
-        public Vector2 nolrmalized()//返回单位向量
+        public Vector2 normalized()//返回单位向量
         {
             if (value() != 0)
                 return new Vector2(X / value(), Y / value());
@@ -1069,10 +1234,10 @@ namespace MathBase
             return X * pB.Y - Y * pB.X;
 		}
 	}
-    public class Triangle2D:ICopyObject<Triangle2D>
+    public struct Triangle2D:ICopyObject<Triangle2D>
     {
         public static readonly double ONETHREE = 1.0 / 3;
-     public Vector2 p1 { get; private set; }
+        public Vector2 p1 { get; private set; } = new Vector2(Double.NaN);
         public Vector2 p2{ get; private set; }
         public Vector2 p3 { get; private set; }
     Vector2 position;
@@ -1084,13 +1249,17 @@ namespace MathBase
             position = p1.add(p2.add(p3)).scale(ONETHREE);
         }
 
+        
 	public	Triangle2D copy()
 		{
             Triangle2D d2 = new Triangle2D(p1, p2,p3);
             d2.position = position;
             return d2;
 		}
-
+        public bool isEmpty()
+        {
+            return double.IsNaN(p1.X);
+        }
      public   bool IsIn( Vector2 pointP)
     {
         Vector2 PA = p1-(pointP);
@@ -1360,7 +1529,7 @@ namespace MathBase
             Vector3 pos = position + h * direction;
             pos = vector3 - pos;
             double r = pos.length();
-            return (new Vector2(r, h),pos.nolrmalized());
+            return (new Vector2(r, h),pos.normalized());
         }
     
 
@@ -1375,7 +1544,7 @@ namespace MathBase
         public Plane(Vector3 pos,Vector3 dir)
 		{
             position = pos;
-            direction = dir.nolrmalized();
+            direction = dir.normalized();
 		}
 
         public Vector3? getCrossPoint(Vector3 position, Vector3 direction, ref double distance)
@@ -1445,7 +1614,7 @@ namespace MathBase
         this.p2 = p2;
         this.p3 = p3;
         position = p1.add(p2).add(p3).scale(ONETHREE);
-        direction = p1.reduce(p2).cross(p2.reduce(p3)).nolrmalized();
+        direction = p1.reduce(p2).cross(p2.reduce(p3)).normalized();
 
     }
         public Plane GetPlane()
@@ -1466,7 +1635,7 @@ namespace MathBase
             this.p2 = p2;
             this.p3 = p3;
             position = p1.add(p2).add(p3).scale(ONETHREE);
-            direction = p1.reduce(p2).cross(p2.reduce(p3)).nolrmalized();
+            direction = p1.reduce(p2).cross(p2.reduce(p3)).normalized();
        
         }
         public Vector3 getP1()

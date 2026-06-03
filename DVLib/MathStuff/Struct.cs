@@ -10,8 +10,7 @@ using DVOSLib;
 using System.Xml;
 using MachineLearning;
 using System.Runtime.InteropServices;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using NewPhysics;
 
 namespace MathBase
 { 
@@ -187,6 +186,19 @@ public class Map<T>
 			return x>=0&&y>=0&&x<Width && y<Height;
 		}
 
+		public virtual Map<T> slice(int x,int y,int nx,int ny)
+		{
+			Map<T> map = new Map<T>(nx, ny);
+			var v = map.getSpan();
+			var vt = getSpan();
+			for(int i=0;i<nx;i++)
+			{
+				vt.Slice((i+x) * Height + y, ny).CopyTo(v.Slice(i * ny, ny));
+			}
+
+			return map;
+
+		}
 		public Map<T> getBox(int x,int y,int width,int height)
 		{
 			Map<T> map = new Map<T>(width, height);
@@ -280,9 +292,9 @@ public class Map<T>
 		}
 
 
-		public Span<T> getRowSpan(int row)
+		public Span<T> getColumnSpan(int Column)
 		{
-			return getSpan().Slice(row*Width,Width);
+			return getSpan().Slice(Column * Height,Height);
 		}
 		public Span<T> getSpan()
 		{
@@ -294,148 +306,153 @@ public class Map<T>
 		public void drawTriangleNew(T color, Vector2 a1, Vector2 a2, Vector2 a3)
 		{
 
-			var r=from Vector2 v in new Vector2[]{ a1,a2,a3} orderby v.Y descending select v;
+			var r=from Vector2 v in new Vector2[]{ a1,a2,a3} orderby v.X descending select v;
 
-			var top=r.ElementAt(0);
+			var Right=r.ElementAt(0);
 			var mid=r.ElementAt(1);
-			var bottom=r.ElementAt(2);
-			Vector2 left, right;
-			if(top.Y==mid.Y)
+			var Left=r.ElementAt(2);
+			Vector2 Up, Down;
+			if(Right.X==mid.X)
 			{
-				if(top.X<mid.X)
+				if(Right.Y<mid.Y)
 				{
-					left=top; right=mid;
+					Up=Right; Down=mid;
 				}
-				else if(top.X==mid.X)
+				else if(Right.Y==mid.Y)
 				{
 					return;
 				}
 				else
 				{
-					left=mid;
-					right=top;
+					Up=mid;
+					Down=Right;
 				}
-				drawTriangleDown(color, bottom, left, right);
+				drawTriangleLeft_(color, Left, Up, Down);
 			}
-			else if(mid.Y==bottom.Y)
+			else if(mid.X==Left.X)
 			{
-				if(mid.X<bottom.X)
+				if(mid.Y<Left.Y)
 				{
-					left = mid;
-					right=bottom;
+					Up = mid;
+					Down=Left;
 				}
-				else if(mid.X==bottom.X)
+				else if(mid.Y==Left.Y)
 				{
 					return;
 				}
 				else
 				{
-					left = bottom;
-					right=mid;
+					Up = Left;
+					Down=mid;
 				}
-                drawTriangleUp(color, bottom, left, right);
+                drawTriangleRight_(color, Right, Up, Down);
             }
 			else
 			{
-				var other=bottom+(top-bottom)/(top.Y-bottom.Y)*(mid.Y-bottom.Y);
-				if(other.X<mid.X)
+				var other=Left+(Right-Left)/(Right.X-Left.X)*(mid.X-Left.X);
+				if(other.Y<mid.Y)
 				{
-					left = other;
-					right = mid;
+					Up = other;
+					Down = mid;
 				}
-				else if(other.X>mid.X)
+				else if(other.Y>mid.Y)
 				{
-					right = other;
-					left = mid;
+					Down = other;
+					Up = mid;
 				}
 				else
 				{
 					return;
 				}
-				drawTriangleUp(color,top, left, right);
-			    drawTriangleDown(color,bottom, left, right);
+				drawTriangleRight_(color,Right, Up, Down);
+			    drawTriangleLeft_(color,Left, Up, Down);
 			}
 
 		}
-        public void drawTriangleUp(T color, Vector2 up, Vector2 left, Vector2 right)
+        public void drawTriangleRight_(T color, Vector2 Right, Vector2 Up, Vector2 Down)
         {
-			double height = up.Y ;
-			double hl = height - left.Y;
-			var start = left;
-			var end = right;
-			var dLeft = (  up.X-left.X) / hl ;
-			var dRight = (up.X-right.X  ) / hl;
+			double width = Right.X ;
+			double wl = width - Up.X;
+			var start = Up;
+			var end = Down;
+			var dUp = ( Right.Y-Up.Y) / wl ;
+			var dDown = (Right.Y-Down.Y  ) / wl;
 			int startIndex, endIndex,l;
-			if(height>=Height)
+			if(width>=Width)
 			{
-				height = Height;
+				width = Width-1;
 			}
-			if(left.Y<0)
+			if(Up.Y<0)
 			{
-				start = new Vector2(-left.Y * dLeft+start.X, 0);
+				start = new Vector2(0,-Up.X * dUp+start.Y); 
+				end = new Vector2(0,-Up.X * dDown + end.Y);
 			}
-			for(int h=(int)(left.Y);h<height;h++)
+			for(int w=(int)(Up.X);w<=width;w++)
 			{
-				var span=getRowSpan(h);
-				startIndex= (int)start.X;
-				endIndex= (int)end.X;
+				var span=getColumnSpan(w);
+				startIndex= (int)start.Y;
+				endIndex= (int)end.Y;
 			
 				if(startIndex<0)
 				{
 					startIndex = 0;
 				}
-				if(endIndex>Width)
+				l = (int)Math.Round(end.Y - start.Y + 1);
+
+				if (startIndex + l > Height)
 				{
-					endIndex = Width;
-				}	
-				l = endIndex - startIndex;
-				if(l>0)
+					l = Height - startIndex;
+				}
+
+				if (l>0)
 				{
 					span.Slice(startIndex,l).Fill(color);
 				}
-				start=start.add(dLeft, 1);
-				end=end.add(dRight, 1);
+				start=start.add( 1,dUp);
+				end=end.add( 1,dDown);
 			}
         }
-        public void drawTriangleDown(T color, Vector2 up, Vector2 left, Vector2 right)
+        public void drawTriangleLeft_(T color, Vector2 Left, Vector2 Up, Vector2 Down)
         {
-            double height = up.Y;
-            double hl = left.Y-height  ;
-            var start = left;
-            var end = right;
-            var dLeft = (up.X- left.X ) / hl;
-            var dRight = ( up.X-right.X ) / hl;
-            int startIndex, endIndex, l;
-            if (height<0)
+            double width = Left.X;
+            double wl = Up.X-width  ;
+            var start = Up;
+            var end = Down;
+            var dUp = (Left.Y- Up.Y ) / wl;
+            var dDown = ( Left.Y-Down.Y ) / wl;
+            int startIndex, l;
+            if (width<0)
             {
-                height =0;
+                width =0;
             }
-            if (left.Y >=Height)
+            if (Up.X>=Width)
             {
-                start = new Vector2((left.Y-Height) * dLeft + start.X, Height);
-            }
-            for (int h = (int)(left.Y); h >= height; h--)
+                start = new Vector2(Width,(Up.X-Width) * dUp + start.Y);
+				end= new Vector2(Width, (Up.X - Width) * dDown + end.Y);
+			}
+            for (int w = (int)(Up.X); w >= width; w--)
             {
-                var span = getRowSpan(h);
-                startIndex = (int)start.X;
-                endIndex = (int)end.X;
+                var span = getColumnSpan(w);
+                startIndex = (int)start.Y;
 
                 if (startIndex < 0)
                 {
                     startIndex = 0;
                 }
-                if (endIndex > Width)
-                {
-                    endIndex = Width;
-                }
-                l = endIndex - startIndex;
-                if (l > 0)
+				l = (int)Math.Round(end.Y - start.Y+1);
+
+				if(startIndex+l>Height)
+				{
+					l=Height-startIndex;
+				}
+
+				if (l > 0)
                 {
                     span.Slice(startIndex, l).Fill(color);
                 }
 
-              start=  start.add(dLeft, -1);
-             end=   end.add(dRight, -1);
+              start=  start.add( -1,dUp);
+              end=   end.add( -1,dDown);
             }
         }
 
@@ -537,12 +554,12 @@ for (int i = 0; i < ll; i++)
 	{
 		Vector2 bc = c - b;
 		Vector2 ba = a - b;
-		Vector2 paintLine = ba.nolrmalized();
+		Vector2 paintLine = ba.normalized();
 		double cos = ba.cos(bc);
 
 
 		double sin = Math.Sqrt(1 - cos * cos);
-		Vector2 dx = bc.nolrmalized() * (1 / sin) * 0.45;
+		Vector2 dx = bc.normalized() * (1 / sin) * 0.45;
 		Vector2 p;
 		Vector2 p0 = b;
 		double a_b = ba.value();
@@ -600,12 +617,12 @@ for (int i = 0; i < ll; i++)
 	{
 
 		Vector2 d = (p2 - p1);
-		Vector2 t = d.row(90).nolrmalized();
+		Vector2 t = d.row(90).normalized();
 		Vector2 ptemp;
 		p1 = p1 - t * (width / 2.0);
 
 		double l = d.value();
-		d = d.nolrmalized();
+		d = d.normalized();
 		l++;
 		if (l > maxValue)
 		{
@@ -689,10 +706,10 @@ for (int i = 0; i < ll; i++)
 			}
 		});
 	}
-	public T this[int x, int y]
+	public ref T this[int x, int y]
 	{
-		get { return Data[x, y]; }
-		set { Data[x, y] = value; }
+		get { return ref Data[x, y]; }
+		//set { Data[x, y] = value; }
 	}
 
 	public T[] getArray()
@@ -712,25 +729,26 @@ for (int i = 0; i < ll; i++)
 
 	public T[] GetColumn(int index)
 	{
-		T[] ret = new T[Height];
-		for (int i = 0; i < Height; i++)
-		{
-			ret[i] = this[index, i];
+
+			return getColumnSpan(index).ToArray();
 		}
-		return ret;
-	}
 	public int SetColumn(int index, T[] src)
 	{
-		for (int i = 0; i < src.Length; i++)
-		{
-			this[index, i] = (i < src.Length) ? src[i] : default(T);
-		}
-		return 0;
+
+			var a = getColumnSpan(index);
+			Span<T> span = src;
+			span.CopyTo(a);
+			return 0;
 	}
 	//获取行和列
 	public T[] GetRow(int index)
 	{
-		return getRowSpan(index).ToArray();
+			T[] ret = new T[Width];
+			for (int i = 0; i < Width; i++)
+			{
+				ret[i] = this[i, index];
+			}
+			return ret;
 	}
 
 	public static Map<T> operator &(Map<T> map, MathFunction<T> function)
@@ -755,14 +773,61 @@ for (int i = 0; i < ll; i++)
 		});
 		return r;
 	}
-	public int SetRow(int index, T[] src)
+
+	
+
+		public int SetRow(int index, T[] src)
 	{
-			var a=getRowSpan(index);
-			Span<T> span = src;
-			span.CopyTo(a);
-		return 0;
+			int min = Math.Min(Width, src.Length);
+			for (int i = 0; i < min; i++)
+			{
+				this[i, index] = src[i];
+			}
+			return 0;
 	}
-}
+
+		public void drawCircle(double radius,Vector2 position,T color)
+		{
+			Vector2 left = position - new Vector2(radius, 0);
+			Vector2 right = position + new Vector2(radius, 0);
+			double d = radius * 2;
+			double l;
+			int length;
+			int ix,iy=(int)position.Y;
+			int s, e;
+			for(double x=0; x<=d;x++)
+			{
+				ix = (int)(position.X-radius + x);
+				if(ix>=0&&ix<Width)
+				{
+                	l = Math.Sqrt(x * 2 * radius+0.0000001 - x*x);
+					s = (int)(iy - l);
+					s=Math.Max(s, 0);
+					e = (int)(iy+l);
+					e= Math.Min(e, Height-1);
+					length=e-s;
+					var v = getColumnSpan(ix);
+					for(int i = 0;i<length;i++)
+					{
+						v[s + i] = color;
+					}
+				}
+			
+
+			}
+
+		}
+
+	 public	 T getValue(int x, int y,T defauleV=default)
+		{
+			
+			if(x>0&&y>0&&x<Width&&y<Height)
+			{
+				return Data[x, y];
+			}
+			return defauleV;
+		}
+	}
 
 /// <summary>
 /// 用于遍历的的函数（委托）

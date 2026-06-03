@@ -1,5 +1,6 @@
 ﻿using DVOSLib;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -10,7 +11,7 @@ namespace DVLib.LabDataHelper
 {
 
 	public delegate double DataConverter(double rawData);
-	public class DataManager
+	public class DataManager:IEnumerable<DataSet>
 	{
 		string name_;
 	public	string name{ get { return name_; } set { name_ = value;OnChnage(null, EventType.ChangeName); } }
@@ -19,40 +20,60 @@ namespace DVLib.LabDataHelper
 		public string describe{ get { return text; } set { text = value;OnChnage(null, EventType.ChangeText); } }
 		List<DataSet> dataSets=new List<DataSet>();
 		public int Count { get { return dataSets.Count; } }
-		public event DataSetEventHandler OnChnage;
+		public event DataSetEventHandler OnChnage=(a,b)=> { };
 
 		public DataManager(string name,string des="")
 		{
 			this.name_ = name;
 			this.text = des;
 		}
-
+	
 		public DataSet this[int x]
 		{ 	get { return dataSets[x];
 			}}
 		
-		public void addNewData(string name,string decribe)
+		public int addNewData(string name,string decribe)
 		{
 			var D = new DataSet(name, decribe);
 			dataSets.Add(D);
 			OnChnage(D,EventType.NewSet);
+			return Count - 1;
 
 		}
-		public void addValue(int index,double value)
+		public void addValue(int index,double value,bool aloud=true)
 		{
 			dataSets[index].data.Add(value);
+			if(aloud)
 			OnChnage(dataSets[index],EventType.NewValue);
 
 		}
-		public void changeValue(int index,int index2,double value)
+		public void changeValue(int index,int index2,double value,bool aloud=true)
 		{
 			dataSets[index].data[index2]=value;
+			if(aloud)
 			OnChnage(dataSets[index],EventType.ChangeValue);
 
 		}
-		public void removeValue(int index, int index2)
+		public void delete(int start,int count)
+		{
+			List<DataSet> doubles=new List<DataSet>();
+			for(int i=0;i<dataSets.Count;i++)
+			{
+				if(i>=start&&i<start+count)
+				{
+
+				}
+				else
+				{
+					doubles.Add(dataSets[i]);
+				}
+			}
+			dataSets = doubles;
+		}
+		public void removeValue(int index, int index2,bool aloud=true)
 		{
 			dataSets[index].data.RemoveAt(index2);
+			if(aloud)
 			OnChnage(dataSets[index],EventType.RemoveValue);
 		}
 		public void changeName(int index,string name)
@@ -60,7 +81,123 @@ namespace DVLib.LabDataHelper
 			dataSets[index].name = name;
 			OnChnage(dataSets[index],EventType.ChangeName);
 		}
-		public void changeDescribe(int index, string describe)
+
+		
+		public double[] getDataFromMean(int length,DataConverter converter=null)
+		{
+			if (converter == null)
+			{
+				converter = d => d;
+			}
+			length = Math.Min(Count, length);
+			double[] doubles = new double[length];
+			for (int i = 0; i < length; i++)
+			{
+				
+					doubles[i] = converter(dataSets[i].Mean);
+				
+			}
+			return doubles;
+		}
+		public double[] getRefData(double[] doubles,double refNum=0)
+		{
+			double refd = doubles[0];
+			double[] r = new double[doubles.Length];
+			for (int i = 0; i < doubles.Length; i++)
+			{
+
+				r[i] = doubles[i] - refd+refNum;
+			}
+
+			return r;
+		}
+		public void orderByDescribe()
+		{
+			var v = from var in dataSets orderby double.Parse(var.describe) ascending select var;
+			dataSets = v.ToList();
+			for(int i = 0;i<Count;i++)
+			{
+				this[i].name = i + "";
+			}
+
+		}
+
+		public static DataManager loadFile(string path)
+		{
+			DataManager d=new DataManager("");
+			d.load(path);
+			return d;
+		}
+		public void merge(IEnumerable<DataSet> data)
+		{
+			foreach (DataSet dataSet in data) {
+
+				dataSets.Add(dataSet.getClone());
+			}
+		}
+		public double[] getDataFromDescribe(int length,DataConverter converter=null)
+		{
+			if(converter==null)
+			{
+				converter = d => d;
+			}
+
+			length=Math.Min(Count, length);
+			double[] doubles = new double[length];
+	
+			for(int i = 0; i < length; i++)
+			{
+				try
+				{
+					doubles[i] =converter( double.Parse(dataSets[i].describe));
+				}
+				catch
+				{
+					doubles[i]= 0;
+				}
+			}
+			return doubles;
+		}
+	public	static double CalculateRSquared(double[] actual, double[] predicted)
+		{
+			
+
+			double actualMean = actual.Average();
+
+			// 计算总平方和 (Total Sum of Squares, SST)
+			double sst = actual.Sum(val => Math.Pow(val - actualMean, 2));
+
+			// 计算残差平方和 (Residual Sum of Squares, SSR)
+			double ssr = actual.Zip(predicted, (a, p) => Math.Pow(a - p, 2)).Sum();
+
+			// 计算 R²
+			return 1 - (ssr / sst);
+		}
+	/// <summary>
+	/// 矫正
+	/// </summary>
+	/// <param name="index"></param>
+	/// <param name="one">计算参考对应的理论值</param>	
+		public void calibrate(int index,DataConverter vaule,DataConverter refv)
+		{
+			try
+			{var d = dataSets[index];
+
+			    double realValue= d.getMean(vaule);
+				double goodRef = refv(realValue);
+				double refValue =goodRef- double.Parse(d.describe);
+				foreach (var v in dataSets)
+				{
+					v.describe = (double.Parse(v.describe)+refValue).ToString();
+				}
+			}
+			catch(Exception e)
+			{
+				DVOS.writeLine(e.ToString());
+			}
+			
+		}
+	public void changeDescribe(int index, string describe)
 		{
 			dataSets[index].describe = describe;
 			OnChnage(dataSets[index],EventType.ChangeText);
@@ -116,6 +253,16 @@ namespace DVLib.LabDataHelper
 			for(int i = 0;i < c;i++) {
 			dataSets.Add(new DataSet().read(stream));
 			}
+		}
+
+		public IEnumerator<DataSet> GetEnumerator()
+		{
+			return dataSets.GetEnumerator();
+		}
+
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return dataSets.GetEnumerator();
 		}
 	}
 }

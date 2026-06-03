@@ -45,7 +45,7 @@ namespace NewPhysics
 			}
             else
 			{
-                Vector2 v2= new Vector2(direction.x, direction.z).row(90).nolrmalized();
+                Vector2 v2= new Vector2(direction.x, direction.z).row(90).normalized();
                 x = new Vector3(v2.X, 0, v2.Y);
                 y = x.cross(direction);
                 
@@ -190,7 +190,7 @@ namespace NewPhysics
 		{
          
             Vector3 d = vector3d - position;
-                d = d.nolrmalized();
+                d = d.normalized();
 
             if (dir.dot(d) < 0)
                 return 0;
@@ -258,7 +258,7 @@ namespace NewPhysics
             if(flag)
 			{
                 Vector3 d = vector3d - position;
-                d = d.nolrmalized();
+                d = d.normalized();
                 if( Math.Abs((d).cos(Triangle.direction)) < maxsin)
 				{
                     light.r = d * r*factor;
@@ -291,7 +291,7 @@ return iRayTraceObjects;
         {
 
             float f = 1;
-            Vector3 d = vector3d.reduce(position).nolrmalized();
+            Vector3 d = vector3d.reduce(position).normalized();
             double v = d.dot(dir);
             if(v<0)
 			{
@@ -338,7 +338,7 @@ return f * factor / (float)(vector3d1.dot(vector3d1))*k;
         {
             Light l = new Light();
             float f = 1;
-            Vector3 d = vector3d.reduce(position).nolrmalized();
+            Vector3 d = vector3d.reduce(position).normalized();
             Vector3 vector3d1 = position.reduce(vector3d);
             float I = f * factor / (float)(vector3d1.dot(vector3d1));
             l.r = d * I * r;
@@ -500,9 +500,9 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
                     Vector2 p1 = camera.pointInScreen(triangle.p1);
                     Vector2 p2= camera.pointInScreen(triangle.p2);
                     Vector2 p3 = camera.pointInScreen(triangle.p3);
-                        bool b1 = (triangle.p1 - camera.getPosition()).nolrmalized().dot(camera.getDirection()) > 0;
-                        bool b2 = (triangle.p2 - camera.getPosition()).nolrmalized().dot(camera.getDirection()) > 0;
-                        bool b3 = (triangle.p3 - camera.getPosition()).nolrmalized().dot(camera.getDirection()) > 0;
+                        bool b1 = (triangle.p1 - camera.getPosition()).normalized().dot(camera.getDirection()) > 0;
+                        bool b2 = (triangle.p2 - camera.getPosition()).normalized().dot(camera.getDirection()) > 0;
+                        bool b3 = (triangle.p3 - camera.getPosition()).normalized().dot(camera.getDirection()) > 0;
                         if(b1&&b2)
                         bitmap.drawline(p1, p2, color);
                         if(b2&&b3)
@@ -549,15 +549,15 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
 		{
             list.Clear();
             dir = surface.position - surface.center;
-            dir = -dir.nolrmalized();
+            dir = -dir.normalized();
             if(dir.y==0&&dir.z==0)
 			{
-                x = (dir + new Vector3(0, 1, 0)).nolrmalized().cross(dir).nolrmalized();
+                x = (dir + new Vector3(0, 1, 0)).normalized().cross(dir).normalized();
                 y = x.cross(dir);
 			}
             else
 			{
-                x = (dir + new Vector3(1, 0, 0)).nolrmalized().cross(dir).nolrmalized();
+                x = (dir + new Vector3(1, 0, 0)).normalized().cross(dir).normalized();
                 y = x.cross(dir);
             }
 
@@ -632,8 +632,8 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
                 else
                 {
                     v2 = camera.pointInScreen(v);
-                    bool b1 = (lv - camera.getPosition()).nolrmalized().dot(camera.getDirection()) > 0;
-                    bool b2 = (v - camera.getPosition()).nolrmalized().dot(camera.getDirection()) > 0;
+                    bool b1 = (lv - camera.getPosition()).normalized().dot(camera.getDirection()) > 0;
+                    bool b2 = (v - camera.getPosition()).normalized().dot(camera.getDirection()) > 0;
                     if (b1 && b2)
                     {
                         bitmap.getSource().drawline(v2, last.Value, color);
@@ -705,7 +705,7 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
             double d=0;
             Vector3? v=surface.getRayTrace(position, direction,ref d);
             if(v!=null)
-			{ Vector3 dir = (v.Value - surface.center).nolrmalized();
+			{ Vector3 dir = (v.Value - surface.center).normalized();
                 if(dir.dot
                    (direction)<0)
 				{
@@ -773,8 +773,8 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
                 else
 				{
                     v2=camera.pointInScreen(v);
-                    bool b1 = (lv - camera.getPosition()).nolrmalized().dot(camera.getDirection()) > 0;
-                    bool b2 = (v - camera.getPosition()).nolrmalized().dot(camera.getDirection()) > 0;
+                    bool b1 = (lv - camera.getPosition()).normalized().dot(camera.getDirection()) > 0;
+                    bool b2 = (v - camera.getPosition()).normalized().dot(camera.getDirection()) > 0;
                     if(b1&& b2)
 					{
                 bitmap.getSource().drawline(v2,last.Value,color);
@@ -841,7 +841,7 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
         }
     public BackgroundLight(float f,float r,float g,float b,Vector3 dir):base(r,g,b)
     {
-            this.dir = dir.nolrmalized();
+            this.dir = dir.normalized();
         this.factor = f;
           light = new Light(); 
             light.r = r * dir*factor;
@@ -928,19 +928,19 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
 			{
                 x_axis = (p2 - p1);
                 width = x_axis.length();
-                x_axis= x_axis.nolrmalized();
+                x_axis= x_axis.normalized();
                 y_axis = (p3 - p1);
                 height = y_axis.length();
-                y_axis = y_axis.nolrmalized();
+                y_axis = y_axis.normalized();
             }
             else
 			{
                 x_axis = (p3-p2);
                 width = x_axis.length();
-                x_axis = x_axis.nolrmalized();
+                x_axis = x_axis.normalized();
                 y_axis = (p3 - p1);
                 height = y_axis.length();
-                y_axis = y_axis.nolrmalized();
+                y_axis = y_axis.normalized();
             }
 
         }
@@ -952,19 +952,19 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
             {
                 x_axis = (p2 - p1);
                 width = x_axis.length();
-                x_axis = x_axis.nolrmalized();
+                x_axis = x_axis.normalized();
                 y_axis = (p3 - p1);
                 height = y_axis.length();
-                y_axis = y_axis.nolrmalized();
+                y_axis = y_axis.normalized();
             }
             else
             {
                 x_axis = (p3 - p2);
                 width = x_axis.length();
-                x_axis = x_axis.nolrmalized();
+                x_axis = x_axis.normalized();
                 y_axis = (p3 - p1);
                 height = y_axis.length();
-                y_axis = y_axis.nolrmalized();
+                y_axis = y_axis.normalized();
             }
         }
 		public World getWorld()
@@ -996,19 +996,19 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
             {
                 x_2d = (P2 - P1);
                 w_2d = x_2d.value();
-                x_2d = x_2d.nolrmalized();
+                x_2d = x_2d.normalized();
                 y_2d = (P3 - P1);
                 h_2d = y_2d.value();
-                y_2d = y_2d.nolrmalized();
+                y_2d = y_2d.normalized();
             }
             else
             {
                 x_2d = (P3 - P2);
                 w_2d= x_2d.value();
-                x_2d = x_2d.nolrmalized();
+                x_2d = x_2d.normalized();
                 y_2d = (P3 - P1);
                 h_2d = y_2d.value();
-                y_2d = y_2d.nolrmalized();
+                y_2d = y_2d.normalized();
             }
         }
         public bool fixTexture = false;
@@ -1103,7 +1103,7 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
             t.miny = miny;
             t.position = position;
             t.direction = direction;
-            if (triangle2D != null)
+            if (triangle2D .isEmpty())
             {
                 t.triangle2D = triangle2D.copy();
             }
@@ -1140,9 +1140,9 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
                 Light light = camera.world.getLightIntensity(getPosition());
               
 
-                bool b1 = (p1 - camera.getPosition()).nolrmalized().dot(camera.getDirection()) > 0;
-                bool b2 = (p2 - camera.getPosition()).nolrmalized().dot(camera.getDirection()) > 0;
-                bool b3 = (p3 - camera.getPosition()).nolrmalized().dot(camera.getDirection()) > 0;
+                bool b1 = (p1 - camera.getPosition()).normalized().dot(camera.getDirection()) > 0;
+                bool b2 = (p2 - camera.getPosition()).normalized().dot(camera.getDirection()) > 0;
+                bool b3 = (p3 - camera.getPosition()).normalized().dot(camera.getDirection()) > 0;
 
                 int c_ = Helper.mixColor(color, new Vector3(Math.Abs(light.r.dot(direction)), Math.Abs(light.g.dot(direction)), Math.Abs(light.b.dot(direction))));
 
@@ -1161,7 +1161,7 @@ List<IRayTraceObject> renderObjects = camera.GetWorld().iRayTrace();
            
             
 
-            if ((position - camera.getPosition()).nolrmalized().dot(camera.getDirection()) <= Math.Cos(camera.getFov()/2))
+            if ((position - camera.getPosition()).normalized().dot(camera.getDirection()) <= Math.Cos(camera.getFov()/2))
             {
                 
                 return;
@@ -1416,7 +1416,7 @@ public class Ball : PhysicsObject,IRayTraceObject
         if (s >= 0)
         {
                 Vector3 pos = p.add(d.scale(s));
-                Vector3 dir = (pos - position).nolrmalized();
+                Vector3 dir = (pos - position).normalized();
                 if(d.dot(dir)<0)
 				{
                     dir = -dir;
@@ -1438,8 +1438,8 @@ public class Ball : PhysicsObject,IRayTraceObject
 
         public void renderEdge(bitmap bitmap, Camera camera,int color,int nums)
         {
-            Vector3 dir = (position - camera.getPosition()).nolrmalized();
-            Vector3 x_ = dir.cross(dir + new Vector3(1, 0, 0)).nolrmalized();
+            Vector3 dir = (position - camera.getPosition()).normalized();
+            Vector3 x_ = dir.cross(dir + new Vector3(1, 0, 0)).normalized();
             Vector3 y_ = dir.cross(x_);
             double dt = 2*Math.PI/nums;
             int x;

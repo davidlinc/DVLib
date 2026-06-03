@@ -243,7 +243,7 @@ y /= n;PosList_X[i] = new Vector2(i, y);
 				if(i>0)
 				{
 					DirectionList_X[i - 1] = (PosList_X[i] - PosList_X[i - 1]);
-					Direction_X += DirectionList_X[i - 1].nolrmalized();
+					Direction_X += DirectionList_X[i - 1].normalized();
 					if(i==w-1)
 					{
 						DirectionList_X[i] = (PosList_X[i] - PosList_X[0]);
@@ -276,7 +276,7 @@ y /= n;PosList_X[i] = new Vector2(i, y);
 				if (j > 0)
 				{
 					DirectionList_Y[j - 1] = (PosList_Y[j] - PosList_Y[j- 1]);
-					Direction_Y += DirectionList_Y[j - 1].nolrmalized();
+					Direction_Y += DirectionList_Y[j - 1].normalized();
 					if (j == h - 1)
 					{
 						DirectionList_Y[j] = (PosList_Y[j] - PosList_Y[0]);

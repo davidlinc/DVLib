@@ -339,7 +339,7 @@ public class Face
             lt =new Vector2(lgill.X/2+lcheek.X/2,lgill.Y)+new Vector2(0, -(lt-lgill).value());
 		}
         Line2d linea = new Line2d(ltop + new Vector2(0, hair.size_hair*0.15f), rtop + new Vector2(0, hair.size_hair*0.15f));
-        Vector2 d = (ltop - lcheek).row(90).nolrmalized()*hair.size_hair*0.15f;
+        Vector2 d = (ltop - lcheek).row(90).normalized()*hair.size_hair*0.15f;
         Line2d lineb =new Line2d(ltop + d, lcheek + d);
         Line2d linec =new  Line2d(rcheek, lcheek);
         Vector2 ld = linec.crosspoint(lineb);

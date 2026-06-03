@@ -34,7 +34,6 @@ namespace DVOSLib
 		{
 			register(InfoType.VECTOR2, (i, o) => { i.writeVector2((Vector2)o); }, (i) => { return i.readVector2(); }, typeof(Vector2));
 			register(InfoType.VECTOR3, (i, o) => { i.writeVector3((Vector3)o); }, (i) => { return i.readVector3(); }, typeof(Vector3));
-
 		}
 
 		internal byte[] bytes = new byte[1];
@@ -54,8 +53,19 @@ namespace DVOSLib
 			}
 		}
 
-		void grow()
+		public void ensureCapcity(int size)
 		{
+			if(Capcity<size)
+			{
+				grow(Capcity - size);
+			}
+		}
+		void grow(int n=0)
+		{
+			if(n>0)
+			{
+				Capcity += n;
+			}
 			Capcity *= 2;
 			byte[] bytes = new byte[Capcity];
 			Array.Copy(this.bytes, bytes, Length);

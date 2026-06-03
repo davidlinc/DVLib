@@ -57,6 +57,7 @@ namespace DVOSLib
 			}
             return "";
 		}
+        /*
         public static bitmap[] getBitmaps(this string path)//获取路径下所有图像
 		{
             List<bitmap> b = new List<bitmap>();
@@ -73,7 +74,7 @@ namespace DVOSLib
 				}
 			}
             return b.ToArray();
-		}
+		}*/
         public static int GetAttributeInt(this XmlElement xmlElement, string name)//获取xml文件的int值
         {
             return int.Parse(xmlElement.GetAttribute(name));

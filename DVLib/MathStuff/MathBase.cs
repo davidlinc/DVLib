@@ -1,15 +1,16 @@
-﻿using System;
+﻿using DVOSLib;
+using Images;
+using MathBase;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using DVOSLib;
-using System.Threading.Tasks;
-using Images;
-using MathBase;
 using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
 using vector2 =MathBase.Vector2;
 
 namespace MathBase
@@ -387,7 +388,10 @@ Data[i, j] = (colors[i, j]) & 0xff;
 			}
 			return Default;
 		}
-
+		public override ComplexMap slice(int x, int y, int nx, int ny)
+		{
+			return new ComplexMap( base.slice(x, y, nx, ny));
+		}
 		public ComplexMap scale(int w, int h)
 		{
 			if (w == Width && h == Height)
@@ -640,6 +644,35 @@ Data[i, j] = (colors[i, j]) & 0xff;
 			});
 			return complex;
 		}
+		public ComplexMap limtedMax_(double factor,out int index)
+		{
+			index = -1;
+			ComplexMap complex =this;
+			double max = double.NegativeInfinity;
+			double temp;
+			int i=0;
+			foreach (Complex complex1 in Data)
+			{
+				temp = complex1.length_2();
+				if (temp > max)
+				{
+					max = temp;
+					index = i;
+				}
+				i++;
+			}
+			max = Math.Sqrt(max);
+			if (max <= 0)
+			{
+				max = 1;
+			}
+			max = 1 / max;
+			complex.Foreach((x, y, data) =>
+			{
+				data[x, y] = Data[x, y] * max * factor; ;
+			});
+			return complex;
+		}
 		public bitmap toBitmap()
 		{
 			bitmap b = new bitmap(Width, Height);
@@ -777,6 +810,95 @@ Data[i, j] = (colors[i, j]) & 0xff;
 			return newMap;
 		}
 
+		public ComplexMap fftShift_(bool multiThreads = false)
+		{
+			ComplexMap newMap = this;
+			Complex[,] vs = newMap.Data;
+
+			int hw = Width / 2;
+			int hh = Height / 2;
+			bool xodd = Width % 2 == 1;
+			bool yodd = Height % 2 == 1;
+			int dx0, dx1, dy0, dy1;
+			if (xodd)
+			{
+				dx0 = hw + 1;
+				dx1 = -hw;
+
+			}
+			else
+			{
+				dx0 = hw;
+				dx1
+					= -hw;
+			}
+			if (yodd)
+			{
+				dy0 = hh + 1;
+				dy1 = -hh;
+			}
+			else
+			{
+				dy0 = hh;
+				dy1 = -hh;
+			}
+			int[][] idx = hw.getRange().split(8);
+
+			if (multiThreads)
+			{
+				Parallel.ForEach(hw.getRange().split(20), x => {
+
+					foreach (int i in x)
+					{
+						
+							for (int j = 0; j < Height; j++)
+							{
+								if (j < hh)
+								{
+									Complex temp = vs[i, j];
+									vs[i, j] = Data[i + dx0, j + dy0];
+									Data[i + dx0, j + dy0] = temp;
+								}
+								else
+								{
+									Complex temp = vs[i, j];
+									vs[i, j] = Data[i + dx0, j + dy1];
+									Data[i + dx0, j + dy1] = temp;
+								}
+
+
+							}
+						
+					}
+
+				});
+			}
+			else
+			{
+				for (int i = 0; i < hw; i++)
+				{
+						for (int j = 0; j < Height; j++)
+						{
+							if (j < hh)
+							{
+								Complex temp = vs[i, j];
+								vs[i, j] = Data[i + dx0, j + dy0];
+								Data[i + dx0, j + dy0]=temp;
+							}
+							else
+							{
+								Complex temp = vs[i, j];
+								vs[i, j] = Data[i + dx0, j + dy1];
+								Data[i + dx0, j + dy1] = temp;
+							}
+
+						}
+					
+
+				}
+			}
+			return newMap;
+		}
 		public bitmap toNotColorfullBitmap()
 		{
 			bitmap b = new bitmap(Width, Height);
@@ -937,6 +1059,100 @@ Data[i, j] = (colors[i, j]) & 0xff;
 			});
 			return b;
 		}
+		public ComplexMap ifftShift_(bool multiThreads = false)
+		{
+			ComplexMap newMap = this;
+			Complex[,] vs = newMap.Data;
+
+			int hw = Width / 2;
+			int hh = Height / 2;
+			bool xodd = Width % 2 == 1;
+			bool yodd = Height % 2 == 1;
+			int dx0, dx1, dy0, dy1;
+			if (xodd)
+			{
+				dx0 = hw;
+				dx1 = -hw - 1;
+				hw++;
+
+			}
+			else
+			{
+				dx0 = hw;
+				dx1
+					= -hw;
+			}
+			if (yodd)
+			{
+				dy0 = hh;
+				dy1 = -hh - 1;
+				hh++;
+			}
+			else
+			{
+				dy0 = hh;
+				dy1 = -hh;
+			}
+			int[][] idx = hw.getRange().split(8);
+
+			if (multiThreads)
+			{
+				Parallel.ForEach(hw.getRange().split(20), x => {
+
+					foreach (int i in x)
+					{
+						
+							for (int j = 0; j < Height; j++)
+							{
+								if (j < hh)
+								{
+									Complex complex = vs[i, j];
+									vs[i, j] = Data[i + dx0, j + dy0];
+									Data[i + dx0, j + dy0] = complex;
+								}
+								else
+								{
+									Complex complex = vs[i, j];
+									vs[i, j] = Data[i + dx0, j + dy1]; 
+									Data[i + dx0, j + dy1]=complex;
+								}
+
+							}
+						
+					}
+
+				});
+			}
+			else
+			{
+				for (int i = 0; i < hw; i++)
+				{
+
+					
+						for (int j = 0; j < Height; j++)
+						{
+							if (j < hh)
+							{
+								Complex complex = vs[i, j];
+								vs[i, j] = Data[i + dx0, j + dy0];
+								Data[i + dx0, j + dy0] = complex;
+							}
+							else
+							{
+								Complex complex = vs[i, j];
+								vs[i, j] = Data[i + dx0, j + dy1];
+								Data[i + dx0, j + dy1] = complex;
+							}
+
+						}
+					
+
+				}
+			}
+
+
+			return newMap;
+		}
 		public ComplexMap ifftShift(bool multiThreads = false)
 		{
 			ComplexMap newMap = new ComplexMap(Width, Height);
@@ -1084,6 +1300,18 @@ Data[i, j] = (colors[i, j]) & 0xff;
 		/// 
 		public static ComplexMap operator *(ComplexMap m1, ComplexMap m2)
 		{
+			
+			ComplexMap complex=new ComplexMap(m1.Width, m1.Height);
+			var d=complex.getSpan();
+			var d1=m1.getSpan();
+			var d2=m2.getSpan();
+
+			for (int i = 0;i<d.Length;i++)
+			{
+				d[i]=d1[i]*d2[i];
+			}
+			return complex;
+			/*
 			ComplexMap r = new ComplexMap(m1.Width, m1.Height);
 			Complex[,] rd = r.Data;
 			int[][] dnx = m1.Width.getRange().split(8);
@@ -1108,7 +1336,7 @@ Data[i, j] = (colors[i, j]) & 0xff;
 				}
 
 			});
-			return r;
+			return r;*/
 		}
 		public ComplexMap ToAbs_2()
 		{
@@ -1539,6 +1767,15 @@ Data[i, j] = (colors[i, j]) & 0xff;
 				return true;
 			return false;
 		}
+		static public bool isNumber(this char a)
+		{
+			char b = '0';
+
+			if (a - b < 10)
+				return true;
+
+			return false;
+		}
 		static public bool isLetter(this char a)
 		{
 			char b = 'a';
@@ -1689,6 +1926,22 @@ Data[i, j] = (colors[i, j]) & 0xff;
 			}
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector3 Decompose(this Vector3 vec,Vector3 X,Vector3 Y,Vector3 Z)
+		{
+			var lx2 = X.length_2();
+			var ly2 = Y.length_2();
+			var lz2 = Z.length_2();
+
+			if (lx2 == 0 || ly2 == 0 || lz2 == 0)
+			{
+				return new Vector3(double.NaN, double.NaN, double.NaN);
+			}
+
+			// When X/Y/Z are orthogonal, the decomposition coefficients are simple projections.
+			// vec = ax*X + ay*Y + az*Z  =>  ax = dot(vec,X)/dot(X,X), etc.
+			return new Vector3(vec.dot(X) / lx2, vec.dot(Y) / ly2, vec.dot(Z) / lz2);
+		}
 		public static Vector3[] readDotCloud( Stream stream)
 		{
 			byte[] bytes=new byte[8];
@@ -1735,7 +1988,7 @@ Data[i, j] = (colors[i, j]) & 0xff;
 		}
 		static public vector2 zoom(this vector2 vector2, vector2 direction, double k)
 		{
-			direction = direction.nolrmalized();
+			direction = direction.normalized();
 			double u = vector2.dot(direction);
 			vector2 vector = vector2 - (u - u * k) * direction;
 			return vector;

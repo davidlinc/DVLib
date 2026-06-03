@@ -1,7 +1,9 @@
 ﻿using DVOSLib;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -15,18 +17,26 @@ namespace DVLib.LabDataHelper
 	}
 
 	public delegate void DataSetEventHandler(DataSet set,EventType type);
-	public class DataSet
+	public class DataSet:IEnumerable<double>
 	{
-	    public	string name{get;internal set;}
+	    public	string name{get; set;}
 		public string describe { get; internal set; }
 		internal List<double> data=new List<double>();
 		public int Count { get { return data.Count; } }
-		public DataSet(string name="New Data",string describe="",int capcity=100)
+		public DataSet(string name="New Data",string describe="")
 		{
 			this.name=name;
 			this.describe=describe;
 		}
 
+		public DataSet getClone()
+		{
+			DataSet clone = new DataSet();
+			clone.name=name;
+			clone.describe=describe;
+			clone.data=data.ToList();
+			return clone;
+		}
 		public double this[int x]
 		{
 			get { return data[x]; }
@@ -85,6 +95,7 @@ namespace DVLib.LabDataHelper
 			info.write(name,describe,data.ToArray());
 		}
 
+		
 		public DataSet read(InfoStream info) {
 		name=info.readString();
         describe=info.readString();
@@ -100,5 +111,14 @@ namespace DVLib.LabDataHelper
 			return name;
 		}
 
+		public IEnumerator<double> GetEnumerator()
+		{
+			return ((IEnumerable<double>)data).GetEnumerator();
+		}
+
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return ((IEnumerable)data).GetEnumerator();
+		}
 	}
 }

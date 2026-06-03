@@ -268,14 +268,14 @@ Vector2 pos = camera.pointInScreen(arrow.getPosition());
 			double a = Math.Sqrt(0.25 - pull * pull) - 0.25;
 			double b = Math.Sqrt(0.5 / 3 - a * a);
 			updirection1 = -a * gravityDirection - b * shootDirection;
-			updirection1 = updirection1.nolrmalized();
+			updirection1 = updirection1.normalized();
 			updirection2 = shootDirection-9*gravityDirection;
-			updirection2 = updirection2.nolrmalized();
+			updirection2 = updirection2.normalized();
 
 			downDirection1= a * gravityDirection - b * shootDirection;
-			downDirection1 = downDirection1.nolrmalized();
+			downDirection1 = downDirection1.normalized();
 			downDirwction2= shootDirection + 9 * gravityDirection;
-			downDirwction2 = downDirwction2.nolrmalized();
+			downDirwction2 = downDirwction2.normalized();
 
 			upNode1 = position - gravityDirection * 0.25 * size;
 			upNode2 = upNode1 + updirection1 * lp1;
@@ -337,7 +337,7 @@ Vector2 pos = camera.pointInScreen(arrow.getPosition());
 
 		public ArrowObject(World world,double length,bitmap texture) : base(world)
 		{
-			Vector3 side_offset = direction.isOnY?(1,0,0):direction.cross((0,1,0)).nolrmalized();
+			Vector3 side_offset = direction.isOnY?(1,0,0):direction.cross((0,1,0)).normalized();
 			Vector3 y_offset = side_offset.cross(direction).scale(0.05);
 			side_offset *= 0.05;
 			Vector3 d_offset = -direction*length;
@@ -359,9 +359,9 @@ Vector2 pos = camera.pointInScreen(arrow.getPosition());
 			}
 			else
 			{
-               direction = vector3.nolrmalized();
+               direction = vector3.normalized();
 			}
-			Vector3 side_offset = direction.isOnY ? (1, 0, 0) : direction.cross((0, 1, 0)).nolrmalized();
+			Vector3 side_offset = direction.isOnY ? (1, 0, 0) : direction.cross((0, 1, 0)).normalized();
 			Vector3 y_offset = side_offset.cross(direction).scale(0.05);
 			side_offset *= 0.05;
 			Vector3 d_offset = -direction*length;
@@ -389,7 +389,7 @@ Vector2 pos = camera.pointInScreen(arrow.getPosition());
 					
 				    isOnground = true;
 					Object = result.getObject();
-					stickDirection = getVelocity().nolrmalized()*0.05;
+					stickDirection = getVelocity().normalized()*0.05;
 					setPosition(result.point+stickDirection);
 					stickDirection *= 2;
 					setVelocity((0, 0, 0));
